@@ -1,0 +1,1098 @@
+{
+  "info": {
+    "_postman_id": "e2e-full-klonix-001",
+    "name": "E2E — Full flow (Klonixpharback)",
+    "description": "## Docs (read first)\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md`\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **This collection:** `postman/E2E_POSTMAN_README.md`\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "platformToken",
+      "value": ""
+    },
+    {
+      "key": "companyToken",
+      "value": ""
+    },
+    {
+      "key": "employeeToken",
+      "value": ""
+    },
+    {
+      "key": "e2ePrefix",
+      "value": "",
+      "description": "Auto-set on 1.2 Send if empty; if you set prefix+email yourself, prerequest leaves them unchanged."
+    },
+    {
+      "key": "e2eAdminEmail",
+      "value": "",
+      "description": "Auto-set on 1.2 Send if empty; if you set prefix+email yourself, prerequest leaves them unchanged."
+    },
+    {
+      "key": "verificationToken",
+      "value": ""
+    },
+    {
+      "key": "employeeTempPassword",
+      "value": "",
+      "description": "Filled by 4.2 Tests from invite response temporaryPassword"
+    },
+    {
+      "key": "invitedUserId",
+      "value": ""
+    },
+    {
+      "key": "invitedEmployeeId",
+      "value": ""
+    },
+    {
+      "key": "e2eInviteEmployeeId",
+      "value": "",
+      "description": "For 4.2 only: leave empty for auto PREFIX-n; or digits e.g. 50 → PREFIX-50; or full employee ID string."
+    },
+    {
+      "key": "sopId",
+      "value": ""
+    },
+    {
+      "key": "quizId",
+      "value": ""
+    },
+    {
+      "key": "assignmentId",
+      "value": ""
+    },
+    {
+      "key": "departmentId",
+      "value": ""
+    },
+    {
+      "key": "quizSubmitPayload",
+      "value": "{}"
+    },
+    {
+      "key": "auditLogId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 — System",
+      "description": "**GET** health / ready / root — no auth. Expect `{ status }` or `{ status, checks }`.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Ready (database)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ready"
+          }
+        },
+        {
+          "name": "API root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1 — Platform",
+      "description": "**1.1** `200` → `{ token, role, name }`. **1.2** `201` onboard → `{ companyId, superAdminId, licenseId, inviteLink, ... }`; Tests save `verificationToken` from `inviteLink`.",
+      "item": [
+        {
+          "name": "1.1 Platform login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/platform/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"master@pharmalearn.com\",\n  \"password\": \"platform123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) pm.collectionVariables.set(\"platformToken\", d.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Onboard company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{platformToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/platform/onboard",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"E2E Demo Pharma\",\n  \"employeeIdPrefix\": \"{{e2ePrefix}}\",\n  \"adminName\": \"E2E Super Admin\",\n  \"adminEmail\": \"{{e2eAdminEmail}}\",\n  \"reason\": \"Postman end-to-end verification of onboarding and training flow\",\n  \"logoUrl\": \"https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Replacement_character.svg/120px-Replacement_character.svg.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// If e2ePrefix + e2eAdminEmail are already set, keep them (no overwrite on Send).",
+                  "const pref = (pm.collectionVariables.get(\"e2ePrefix\") || \"\").trim();",
+                  "const adm = (pm.collectionVariables.get(\"e2eAdminEmail\") || \"\").trim();",
+                  "if (pref && adm) { return; }",
+                  "const t = Date.now();",
+                  "const p = (\"E\" + t.toString(36).toUpperCase()).slice(0, 10);",
+                  "pm.collectionVariables.set(\"e2ePrefix\", p);",
+                  "pm.collectionVariables.set(\"e2eAdminEmail\", \"emp.admin.\" + t + \"@e2e.example.com\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.inviteLink) {",
+                  "  const m = String(d.inviteLink).match(/token=([a-f0-9-]+)/i);",
+                  "  if (m) pm.collectionVariables.set(\"verificationToken\", m[1]);",
+                  "}",
+                  "if (d.licenseId) console.log(\"Assigned licenseId:\", d.licenseId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 — Auth (tenant)",
+      "description": "**2.1** `POST /api/auth/set-password` `200` `{ message }`. **2.2** tenant login `200` → saves `companyToken`. Use **organization** = prefix or license.",
+      "item": [
+        {
+          "name": "2.1 Set password (super admin invite)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/set-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verificationToken}}\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "2.2 Company login (organization + employeeId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization\": \"{{e2ePrefix}}\",\n  \"employeeId\": \"{{e2ePrefix}}-1\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) pm.collectionVariables.set(\"companyToken\", d.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 (Optional) Auth route — platform admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"master@pharmalearn.com\",\n  \"password\": \"platform123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Company & branding",
+      "item": [
+        {
+          "name": "3.1 GET company (dashboard / logoDisplayUrl)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/company"
+          }
+        },
+        {
+          "name": "3.2 POST company logo (optional — attach PNG/JPEG as file)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/company/logo",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Choose a small PNG or JPEG in Postman"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Admin org & users",
+      "description": "**4.0** bulk `201` → `{ message, users: [{ employeeId, temporaryPassword }] }`. **4.2** single user same + `userId`. Email optional on API.",
+      "item": [
+        {
+          "name": "4.0 Bulk import — POST /api/admin/users/bulk",
+          "request": {
+            "description": "Creates multiple users without **email** (line workers). Each row may include **employeeId** (optional): leave **\"\"** for auto `PREFIX-n`; digits only → `PREFIX-digits`; else full ID. Response lists **employeeId** + **temporaryPassword** per row. Optional **email** per user if you want mail later.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"users\": [\n    {\n      \"name\": \"E2E Bulk Employee\",\n      \"role\": \"EMPLOYEE\",\n      \"employeeId\": \"\",\n      \"departmentId\": \"{{departmentId}}\"\n    },\n    {\n      \"name\": \"E2E Bulk Trainer\",\n      \"role\": \"TRAINER\",\n      \"employeeId\": \"\"\n    }\n  ],\n  \"reason\": \"Postman E2E bulk import sample run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "4.1 Create department",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/departments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"E2E Production\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.id) pm.collectionVariables.set(\"departmentId\", d.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Invite employee",
+          "request": {
+            "description": "**employeeId** (optional): omit → auto `{prefix}-n`; digits only → `{prefix}-digits`; else full ID. **Login:** organization + employeeId + password. **Email** is optional — omit for floor workers; add **email** only if this person should receive system mail.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"E2E Line Worker\",\n  \"role\": \"EMPLOYEE\",\n  \"employeeId\": \"{{e2eInviteEmployeeId}}\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"reason\": \"Postman E2E invite for training assignment flow\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.userId) pm.collectionVariables.set(\"invitedUserId\", d.userId);",
+                  "if (d.employeeId) pm.collectionVariables.set(\"invitedEmployeeId\", d.employeeId);",
+                  "if (d.temporaryPassword) pm.collectionVariables.set(\"employeeTempPassword\", d.temporaryPassword);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users"
+          }
+        },
+        {
+          "name": "4.4 Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/stats"
+          }
+        },
+        {
+          "name": "4.5 PATCH employee role → TRAINER (then back)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{invitedUserId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"TRAINER\",\n  \"reason\": \"Postman E2E role change verification\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "4.6 PATCH role back to EMPLOYEE",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/users/{{invitedUserId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"EMPLOYEE\",\n  \"reason\": \"Postman E2E revert role for assignment tests\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 — SOPs & quizzes",
+      "description": "**5.5** AI study materials (`GET .../sops/:id/study`). **5.6** SOP chat (`POST .../sops/:id/chat`). Need **`sopId`** from **5.2** and a valid **`companyToken`**.",
+      "item": [
+        {
+          "name": "5.1 List SOPs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/"
+          }
+        },
+        {
+          "name": "5.2 Upload SOP (PDF file + form fields)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "type": "text",
+                  "value": "E2E GMP SOP"
+                },
+                {
+                  "key": "version",
+                  "type": "text",
+                  "value": "1.0"
+                },
+                {
+                  "key": "category",
+                  "type": "text",
+                  "value": "E2E"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Attach a real PDF (required)"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.sopId) pm.collectionVariables.set(\"sopId\", d.sopId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Get quizzes for SOP",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/quizzes/sop/{{sopId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const quizzes = pm.response.json();",
+                  "if (!Array.isArray(quizzes) || quizzes.length < 1) {",
+                  "  console.warn(\"No quizzes: fix SOP upload or AI keys\");",
+                  "  return;",
+                  "}",
+                  "const quiz = quizzes[0];",
+                  "pm.collectionVariables.set(\"quizId\", quiz.id);",
+                  "const questions = quiz.questions || [];",
+                  "const answers = questions.map((q, i) => ({ questionIndex: i, selectedAnswer: q.correctAnswer }));",
+                  "pm.collectionVariables.set(\"quizSubmitPayload\", JSON.stringify({",
+                  "  answers,",
+                  "  signature: { value: \"E2E Tester\", meaning: \"Attest quiz completion\" }",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Create manual quiz (optional extra quiz)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/quizzes/manual",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sopId\": \"{{sopId}}\",\n  \"difficulty\": \"BASIC\",\n  \"questions\": [\n    {\n      \"question\": \"E2E sample: 2+2=?\",\n      \"options\": [\n        \"3\",\n        \"4\",\n        \"5\",\n        \"22\"\n      ],\n      \"correctAnswer\": \"4\",\n      \"explanation\": \"Arithmetic\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.5 GET study materials (AI summary / flashcards)",
+          "request": {
+            "description": "`GET /api/sops/:sopId/study` — returns JSON (cached in `studyMaterials` or AI-generated). Requires AI/storage working for cache miss.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/study"
+          }
+        },
+        {
+          "name": "5.6 POST SOP chat (AI assistant)",
+          "request": {
+            "description": "`POST /api/sops/:sopId/chat` — body `{ \"question\": \"...\" }`; response `{ \"answer\": \"...\" }`.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is the main purpose of this SOP?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 — Assignments & training",
+      "description": "**6.2** login → `mustChangePassword: true`. **6.3** change password → new `token`. **6.6** submit quiz — body built from **5.3** Tests script (`quizSubmitPayload`).",
+      "item": [
+        {
+          "name": "6.1 Assign quiz to invited user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{invitedUserId}}\",\n  \"quizId\": \"{{quizId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "6.2 Employee login (temporary password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization\": \"{{e2ePrefix}}\",\n  \"employeeId\": \"{{invitedEmployeeId}}\",\n  \"password\": \"{{employeeTempPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) pm.collectionVariables.set(\"employeeToken\", d.token);",
+                  "pm.test(\"must change password after invite\", function () {",
+                  "  pm.expect(d.mustChangePassword).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 Change password (first login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/change-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{employeeTempPassword}}\",\n  \"newPassword\": \"Employee@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.token) pm.collectionVariables.set(\"employeeToken\", d.token);",
+                  "pm.test(\"password change returns fresh token\", function () {",
+                  "  pm.expect(d.mustChangePassword).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 My assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/my"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const arr = pm.response.json();",
+                  "const qid = pm.collectionVariables.get(\"quizId\");",
+                  "const a = Array.isArray(arr) ? arr.find((x) => x.quizId === qid) || arr[0] : null;",
+                  "if (a && a.id) pm.collectionVariables.set(\"assignmentId\", a.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 My training dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/my-training"
+          }
+        },
+        {
+          "name": "6.6 Submit quiz (uses quizSubmitPayload from 5.3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{{quizSubmitPayload}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.certificateUrl) console.log(\"certificateUrl present\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 — Certificate",
+      "item": [
+        {
+          "name": "7.1 GET certificate signed URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employeeToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/certificate"
+          }
+        },
+        {
+          "name": "7.2 GET certificate as admin (privileged)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/certificate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8 — Analytics, export, audit",
+      "item": [
+        {
+          "name": "8.1 Analytics compliance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/analytics/compliance"
+          }
+        },
+        {
+          "name": "8.2 Analytics risk report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/analytics/risk-report"
+          }
+        },
+        {
+          "name": "8.3 Export training report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/export/training-report"
+          }
+        },
+        {
+          "name": "8.4 Audit company feed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/audit/company?page=1&limit=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "const first = d.logs && d.logs[0];",
+                  "if (first && first.id) pm.collectionVariables.set(\"auditLogId\", first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.5 Audit — copy first log id from 8.4 body then run",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/audit/{{auditLogId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9 — Notifications & e-signatures",
+      "item": [
+        {
+          "name": "9.1 List notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/"
+          }
+        },
+        {
+          "name": "9.2 List e-signatures",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/esignatures/"
+          }
+        }
+      ]
+    }
+  ]
+}

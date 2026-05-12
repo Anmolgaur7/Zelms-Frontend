@@ -1,0 +1,146 @@
+/**
+ * app/dashboard/users/page.tsx
+ *
+ * User management table — Admin / Super Admin only.
+ * Shows all tenant users with role, email (nullable → "—"), and employee ID.
+ */
+
+import Link from 'next/link'
+import { getUsers } from '@/lib/actions/admin'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { PlusIcon, UsersIcon, UploadIcon } from 'lucide-react'
+import { CreateUserModal } from '@/components/modals/create-user-modal'
+
+export const metadata = { title: 'Users' }
+
+// ─── Role badge colours ───────────────────────────────────────────────────────
+const ROLE_COLOURS: Record<string, string> = {
+  SUPER_ADMIN: 'bg-purple-100 text-purple-700 border-purple-200',
+  ADMIN:       'bg-blue-100 text-blue-700 border-blue-200',
+  TRAINER:     'bg-emerald-100 text-emerald-700 border-emerald-200',
+  EMPLOYEE:    'bg-slate-100 text-slate-700 border-slate-200',
+  AUDITOR:     'bg-amber-100 text-amber-700 border-amber-200',
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN:       'Admin',
+  TRAINER:     'Trainer',
+  EMPLOYEE:    'Employee',
+  AUDITOR:     'Auditor',
+}
+
+export default async function UsersPage() {
+  const users = await getUsers()
+
+  return (
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {users.length} account{users.length !== 1 ? 's' : ''} in your organisation
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard/users/bulk">
+              <UploadIcon className="mr-2 h-4 w-4" />
+              Bulk Import
+            </Link>
+          </Button>
+          <CreateUserModal
+            trigger={
+              <Button size="sm">
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            }
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <UsersIcon className="h-4 w-4 text-muted-foreground" />
+            All Users
+          </CardTitle>
+          <CardDescription>
+            Temporary passwords are only shown once at creation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {users.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
+              <UsersIcon className="h-10 w-10 opacity-20" />
+              <p className="text-sm">No users yet.</p>
+              <CreateUserModal
+                trigger={
+                  <Button size="sm" variant="outline">
+                    <PlusIcon className="mr-2 h-4 w-4" /> Create your first user
+                  </Button>
+                }
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Department</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-mono text-sm">
+                      {user.employeeId}
+                    </TableCell>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                          ROLE_COLOURS[user.role] ?? 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {ROLE_LABELS[user.role] ?? user.role}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {user.email ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {user.department?.name ?? '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

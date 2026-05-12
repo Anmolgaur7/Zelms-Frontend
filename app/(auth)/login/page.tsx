@@ -1,0 +1,188 @@
+'use client'
+
+/**
+ * app/(auth)/login/page.tsx
+ *
+ * Tenant login — three fields: Company Code, Employee ID, Password.
+ * Docs rule: organization = employeeIdPrefix OR licenseId (NOT the UUID).
+ * On mustChangePassword, middleware will redirect to /change-password.
+ */
+
+import { useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { toast } from 'sonner'
+
+import { tenantLogin } from '@/lib/actions/auth'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Building2, IdCard, Lock, Loader2 } from 'lucide-react'
+
+// ─── Schema ───────────────────────────────────────────────────────────────────
+const schema = z.object({
+  organization: z
+    .string()
+    .min(1, 'Company code is required')
+    .trim(),
+  employeeId: z
+    .string()
+    .min(1, 'Employee ID is required')
+    .trim(),
+  password: z.string().min(1, 'Password is required'),
+})
+
+type FormValues = z.infer<typeof schema>
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function LoginPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  })
+
+  const onSubmit = (values: FormValues) => {
+    setServerError(null)
+    startTransition(async () => {
+      const result = await tenantLogin(values)
+
+      if (result.error) {
+        // Show inline error for credential failures
+        if (
+          result.errorCode === 'AUTH_INVALID_CREDENTIALS' ||
+          result.errorCode === 'AUTH_NOT_VERIFIED' ||
+          result.errorCode === 'ACCOUNT_SUSPENDED'
+        ) {
+          setServerError(result.error)
+        } else {
+          toast.error(result.error)
+        }
+        return
+      }
+
+      // Middleware handles redirecting based on role / mustChangePassword
+      const from = searchParams.get('from') ?? '/dashboard'
+      router.push(from)
+      router.refresh()
+    })
+  }
+
+  return (
+    <Card className="shadow-lg border-border/50">
+      <CardHeader className="space-y-1 pb-4">
+        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardDescription>
+          Enter your company code and employee credentials
+        </CardDescription>
+      </CardHeader>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <CardContent className="space-y-4">
+          {/* Server-level error banner */}
+          {serverError && (
+            <div
+              role="alert"
+              className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive"
+            >
+              {serverError}
+            </div>
+          )}
+
+          {/* Company Code */}
+          <div className="space-y-1.5">
+            <Label htmlFor="organization">Company Code</Label>
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="organization"
+                {...register('organization')}
+                placeholder="e.g. ACME"
+                autoComplete="organization"
+                className="pl-9"
+                disabled={isPending}
+              />
+            </div>
+            {errors.organization && (
+              <p className="text-xs text-destructive">{errors.organization.message}</p>
+            )}
+          </div>
+
+          {/* Employee ID */}
+          <div className="space-y-1.5">
+            <Label htmlFor="employeeId">Employee ID</Label>
+            <div className="relative">
+              <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="employeeId"
+                {...register('employeeId')}
+                placeholder="e.g. ACME-2"
+                autoComplete="username"
+                className="pl-9"
+                disabled={isPending}
+              />
+            </div>
+            {errors.employeeId && (
+              <p className="text-xs text-destructive">{errors.employeeId.message}</p>
+            )}
+          </div>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                {...register('password')}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="pl-9"
+                disabled={isPending}
+              />
+            </div>
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+        </CardContent>
+
+        <CardFooter className="pt-2">
+          <Button
+            id="tenant-login-submit"
+            type="submit"
+            className="w-full"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              'Sign in'
+            )}
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  )
+}
