@@ -11,6 +11,9 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { SiteHeader } from '@/components/site-header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
+// All /my-trainings pages read the employee session cookie + hit the API.
+export const dynamic = 'force-dynamic'
+
 export default async function TrainingLayout({
   children,
 }: {

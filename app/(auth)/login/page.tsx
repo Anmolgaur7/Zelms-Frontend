@@ -8,7 +8,7 @@
  * On mustChangePassword, middleware will redirect to /change-password.
  */
 
-import { useState, useTransition } from 'react'
+import { Suspense, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -44,8 +44,30 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Suspense wrapper ─────────────────────────────────────────────────────────
+// Next 15 requires a Suspense boundary around useSearchParams() so the page
+// can be rendered without query strings during prerendering.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginSkeleton() {
+  return (
+    <Card className="shadow-lg border-border/50">
+      <CardHeader className="space-y-1 pb-4">
+        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardDescription>Loading…</CardDescription>
+      </CardHeader>
+    </Card>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()

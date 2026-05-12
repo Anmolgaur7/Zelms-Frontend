@@ -10,7 +10,7 @@
  * API: POST /api/auth/set-password { token, password }
  */
 
-import { useState, useTransition } from 'react'
+import { Suspense, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -47,8 +47,30 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Suspense wrapper ─────────────────────────────────────────────────────────
+// useSearchParams() forces CSR bailout; Next 15 requires a Suspense boundary
+// around the part of the tree that reads search params during prerendering.
 export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={<SetPasswordSkeleton />}>
+      <SetPasswordForm />
+    </Suspense>
+  )
+}
+
+function SetPasswordSkeleton() {
+  return (
+    <Card className="shadow-lg border-border/50">
+      <CardHeader className="space-y-1 pb-4">
+        <CardTitle className="text-xl">Set Your Password</CardTitle>
+        <CardDescription>Loading…</CardDescription>
+      </CardHeader>
+    </Card>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+function SetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get('token')
