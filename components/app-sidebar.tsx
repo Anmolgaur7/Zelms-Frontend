@@ -20,6 +20,9 @@ import {
   FlaskConicalIcon,
   BookOpenIcon,
   AwardIcon,
+  ActivityIcon,
+  AlertTriangleIcon,
+  TargetIcon,
 } from 'lucide-react'
 
 import { NavUser } from '@/components/nav-user'
@@ -74,6 +77,25 @@ const NAV_ITEMS: NavItem[] = [
     title: 'Assignments',
     url: '/dashboard/assignments',
     icon: ClipboardCheckIcon,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER'],
+  },
+  {
+    title: 'Compliance',
+    url: '/dashboard/analytics/compliance',
+    icon: ActivityIcon,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+  },
+  {
+    title: 'Risk',
+    url: '/dashboard/analytics/risk',
+    icon: AlertTriangleIcon,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+  },
+  {
+    title: 'SOP Difficulty',
+    url: '/dashboard/analytics/sop-difficulty',
+    icon: TargetIcon,
+    // Backend: ADMIN | TRAINER (SUPER_ADMIN treated as full admin).
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER'],
   },
   {

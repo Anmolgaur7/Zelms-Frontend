@@ -6,7 +6,9 @@
  */
 
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { getUsers } from '@/lib/actions/admin'
+import { getAdminStats } from '@/lib/actions/analytics'
 import { getSession } from '@/lib/session'
 import {
   UsersIcon,
@@ -14,7 +16,9 @@ import {
   FileTextIcon,
   ShieldCheckIcon,
   TrendingUpIcon,
-  ClockIcon,
+  AlertTriangleIcon,
+  ActivityIcon,
+  TargetIcon,
   Building2Icon,
 } from 'lucide-react'
 import {
@@ -85,62 +89,143 @@ function StatCard({
 // ─── Stats skeleton ───────────────────────────────────────────────────────────
 function StatsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-7 w-16 mb-1" />
-            <Skeleton className="h-3 w-32" />
-          </CardContent>
-        </Card>
+    <div className="space-y-4">
+      {[0, 1].map((row) => (
+        <div key={row} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-16 mb-1" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ))}
     </div>
   )
 }
 
+function fmtNum(v: number | undefined | null): string {
+  if (typeof v !== 'number' || Number.isNaN(v)) return '—'
+  return v.toLocaleString()
+}
+
+function fmtPct(v: number | undefined | null): string {
+  if (typeof v !== 'number' || Number.isNaN(v)) return '—'
+  // Backend sometimes ships 0.93, sometimes 93.
+  const pct = v <= 1 ? v * 100 : v
+  return `${pct.toFixed(0)}%`
+}
+
 // ─── Stats (async) ────────────────────────────────────────────────────────────
 async function DashboardStats() {
-  const [users, session] = await Promise.all([getUsers(), getSession()])
+  const [users, { stats, error }] = await Promise.all([
+    getUsers(),
+    getAdminStats(),
+  ])
 
-  const totalUsers = users.length
-  const activeEmployees = users.filter((u) => u.role === 'EMPLOYEE').length
-  const admins = users.filter(
+  // User-role tallies fall back to the users list so the tiles still render
+  // if `/api/admin/stats` is unreachable (e.g. role-gated for TRAINER).
+  const fallbackTotal = users.length
+  const fallbackEmployees = users.filter((u) => u.role === 'EMPLOYEE').length
+  const fallbackAdmins = users.filter(
     (u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN',
   ).length
-  const trainers = users.filter((u) => u.role === 'TRAINER').length
+  const fallbackTrainers = users.filter((u) => u.role === 'TRAINER').length
+
+  const totalUsers = stats?.totalUsers ?? fallbackTotal
+  const employees = stats?.employees ?? fallbackEmployees
+  const admins = stats?.admins ?? fallbackAdmins
+  const trainers = stats?.trainers ?? fallbackTrainers
+
+  const totalAssignments = stats?.totalAssignments
+  const pending = stats?.pending
+  const overdue = stats?.overdue
+  const completionRate = stats?.completionRate
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        title="Total Users"
-        value={totalUsers}
-        description="All active accounts"
-        icon={UsersIcon}
-        trend="up"
-        trendLabel={`${activeEmployees} employees`}
-      />
-      <StatCard
-        title="Administrators"
-        value={admins}
-        description="Admin & Super Admin"
-        icon={ShieldCheckIcon}
-      />
-      <StatCard
-        title="Trainers"
-        value={trainers}
-        description="SOP training staff"
-        icon={FileTextIcon}
-      />
-      <StatCard
-        title="Pending Assignments"
-        value="—"
-        description="Awaiting completion"
-        icon={ClipboardCheckIcon}
-        trendLabel="Live soon"
-      />
+    <div className="space-y-4">
+      {error ? (
+        <p className="text-xs text-muted-foreground">
+          Couldn&apos;t load live KPIs ({error.code}). Showing role tallies only.
+        </p>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Users"
+          value={fmtNum(totalUsers)}
+          description="All active accounts"
+          icon={UsersIcon}
+          trend="up"
+          trendLabel={`${fmtNum(employees)} employees`}
+        />
+        <StatCard
+          title="Administrators"
+          value={fmtNum(admins)}
+          description="Admin & Super Admin"
+          icon={ShieldCheckIcon}
+        />
+        <StatCard
+          title="Trainers"
+          value={fmtNum(trainers)}
+          description="SOP training staff"
+          icon={FileTextIcon}
+        />
+        <StatCard
+          title="Pending Assignments"
+          value={fmtNum(pending)}
+          description={
+            typeof totalAssignments === 'number'
+              ? `of ${fmtNum(totalAssignments)} total`
+              : 'Awaiting completion'
+          }
+          icon={ClipboardCheckIcon}
+          trend={
+            typeof overdue === 'number' && overdue > 0 ? 'down' : 'neutral'
+          }
+          trendLabel={
+            typeof overdue === 'number' && overdue > 0
+              ? `${fmtNum(overdue)} overdue`
+              : undefined
+          }
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Completion Rate"
+          value={fmtPct(completionRate)}
+          description="Across all assignments"
+          icon={ActivityIcon}
+        />
+        <StatCard
+          title="Average Quiz Score"
+          value={fmtPct(stats?.averageScore)}
+          description="Latest attempts"
+          icon={TrendingUpIcon}
+        />
+        <StatCard
+          title="Locked-out Trainees"
+          value={fmtNum(stats?.lockedOut)}
+          description="Awaiting unlock"
+          icon={AlertTriangleIcon}
+        />
+        <StatCard
+          title="Active SOPs"
+          value={fmtNum(stats?.activeSops)}
+          description={
+            typeof stats?.totalSops === 'number'
+              ? `of ${fmtNum(stats.totalSops)} total`
+              : 'Currently published'
+          }
+          icon={TargetIcon}
+        />
+      </div>
     </div>
   )
 }
@@ -251,18 +336,65 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Coming soon */}
-      <Card className="border-dashed">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium">Training Analytics</CardTitle>
+      {/* Analytics jump-off */}
+      {(session.role === 'ADMIN' ||
+        session.role === 'SUPER_ADMIN' ||
+        session.role === 'TRAINER' ||
+        session.role === 'AUDITOR') && (
+        <div>
+          <h2 className="text-base font-semibold mb-3">Analytics</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              href="/dashboard/analytics/compliance"
+              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <ActivityIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <div className="text-sm font-medium">Compliance Report</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Completion by department and SOP
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/analytics/risk"
+              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <AlertTriangleIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <div className="text-sm font-medium">Risk Report</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Overdue, failed, and locked-out trainees
+                </div>
+              </div>
+            </Link>
+
+            {(session.role === 'ADMIN' ||
+              session.role === 'SUPER_ADMIN' ||
+              session.role === 'TRAINER') && (
+              <Link
+                href="/dashboard/analytics/sop-difficulty"
+                className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <TargetIcon className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">SOP Difficulty</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Pass rates and average scores by SOP
+                  </div>
+                </div>
+              </Link>
+            )}
           </div>
-          <CardDescription className="text-xs">
-            Completion rates, quiz scores, and overdue assignments charts — coming in Phase 5.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+        </div>
+      )}
     </div>
   )
 }
