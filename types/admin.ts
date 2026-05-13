@@ -76,6 +76,16 @@ export interface BulkCreateResponse {
 // ─── SOP ──────────────────────────────────────────────────────────────────────
 export type SopStatus = 'DRAFT' | 'UNDER_REVIEW' | 'ACTIVE' | 'ARCHIVED'
 
+/**
+ * Query params for `GET /api/sops/`. All optional; backend supports filtering
+ * by category, status, and a free-text search.
+ */
+export interface SopListQuery {
+  category?: string
+  status?: SopStatus
+  search?: string
+}
+
 /** Status values that the e-sign status-change endpoint accepts. */
 export const SOP_STATUS_VALUES: SopStatus[] = [
   'DRAFT',

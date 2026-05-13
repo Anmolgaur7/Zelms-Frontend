@@ -42,7 +42,14 @@ async function backendPost<T>(
   body: unknown,
   bearerToken?: string,
 ): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const outboundId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Request-ID': outboundId,
+  }
   if (bearerToken) headers['Authorization'] = `Bearer ${bearerToken}`
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -52,15 +59,30 @@ async function backendPost<T>(
     cache: 'no-store',
   })
 
-  const data = await res.json()
+  const responseRequestId =
+    res.headers.get('x-request-id') ?? res.headers.get('X-Request-ID') ?? outboundId
+
+  let data: unknown
+  try {
+    data = await res.json()
+  } catch {
+    data = {}
+  }
 
   if (!res.ok) {
-    throw new ApiError(
-      data.message ?? `HTTP ${res.status}`,
-      data.errorCode ?? 'UNKNOWN_ERROR',
-      res.status,
-      data.details,
-    )
+    const err = (data && typeof data === 'object' ? data : {}) as {
+      message?: string
+      errorCode?: string
+      details?: unknown
+    }
+    const message =
+      typeof err.message === 'string' ? err.message : `HTTP ${res.status}`
+    const errorCode =
+      typeof err.errorCode === 'string' ? err.errorCode : 'UNKNOWN_ERROR'
+
+    console.error('[api]', 'POST', path, res.status, errorCode, responseRequestId, message)
+
+    throw new ApiError(message, errorCode, res.status, err.details, responseRequestId)
   }
 
   return data as T
@@ -103,7 +125,7 @@ export async function tenantLogin(
     return {}
   } catch (e) {
     if (e instanceof ApiError)
-      return { error: e.message, errorCode: e.errorCode }
+      return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Login failed. Please try again.' }
   }
 }
@@ -120,7 +142,7 @@ export async function setPassword(
     await backendPost('/api/auth/set-password', body)
     return {}
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to set password. The link may have expired.' }
   }
 }
@@ -145,7 +167,7 @@ export async function changePassword(
     await setAuthCookies(data)
     return {}
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to change password.' }
   }
 }

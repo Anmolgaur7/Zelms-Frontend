@@ -13,9 +13,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { toast } from 'sonner'
 
 import { tenantLogin } from '@/lib/actions/auth'
+import { toastActionError } from '@/lib/toast-action-error'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -95,7 +95,7 @@ function LoginForm() {
         ) {
           setServerError(result.error)
         } else {
-          toast.error(result.error)
+          toastActionError(result.error, result.requestId)
         }
         return
       }

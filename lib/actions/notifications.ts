@@ -34,6 +34,7 @@ export interface NotificationsResult {
   unreadCount: number
   error?: string
   errorCode?: string
+  requestId?: string
 }
 
 function unwrap(raw: unknown): NotificationItem[] {
@@ -75,6 +76,7 @@ export async function getNotifications(): Promise<NotificationsResult> {
         unreadCount: 0,
         error: e.message,
         errorCode: e.errorCode,
+        requestId: e.requestId,
       }
     }
     return {
@@ -95,7 +97,7 @@ export async function markNotificationRead(
     return { data: { id } }
   } catch (e) {
     console.error('[notifications.markNotificationRead]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not mark notification as read.' }
   }
 }
@@ -116,7 +118,7 @@ export async function markAllNotificationsRead(): Promise<
     return { data: {} }
   } catch (e) {
     console.error('[notifications.markAllNotificationsRead]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not mark all notifications as read.' }
   }
 }

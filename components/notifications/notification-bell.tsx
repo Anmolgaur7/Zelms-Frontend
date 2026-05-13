@@ -21,7 +21,8 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import { toastActionError } from '@/lib/toast-action-error'
+import { LiveDot } from '@/components/ui/live-dot'
 import {
   BellIcon,
   CheckCheckIcon,
@@ -116,7 +117,12 @@ export function NotificationBell({ initial }: Props) {
   // the cost is one HTTP request per minute. If rate-limiting bites, swap to
   // `document.visibilityState === 'visible'` gating here.
   useEffect(() => {
-    const id = window.setInterval(refresh, POLL_INTERVAL_MS)
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible')
+        return
+      void refresh()
+    }
+    const id = window.setInterval(tick, POLL_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [refresh])
 
@@ -155,7 +161,7 @@ export function NotificationBell({ initial }: Props) {
     startTransition(async () => {
       const result = await markNotificationRead(n.id)
       if (result.error) {
-        toast.error(result.error)
+        toastActionError(result.error, result.requestId)
       }
       await refresh()
       router.refresh()
@@ -177,7 +183,7 @@ export function NotificationBell({ initial }: Props) {
     startTransition(async () => {
       const result = await markAllNotificationsRead()
       if (result.error) {
-        toast.error(result.error)
+        toastActionError(result.error, result.requestId)
       } else {
         toast.success('All notifications marked as read.')
       }
@@ -246,7 +252,14 @@ export function NotificationBell({ initial }: Props) {
         {state.error && (
           <div className="flex items-start gap-2 border-b bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             <AlertCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{state.error}</span>
+            <div className="space-y-0.5">
+              <span>{state.error}</span>
+              {state.requestId ? (
+                <span className="block font-mono text-[10px] opacity-90">
+                  Request ID: {state.requestId}
+                </span>
+              ) : null}
+            </div>
           </div>
         )}
 
@@ -318,9 +331,7 @@ export function NotificationBell({ initial }: Props) {
         <Separator />
 
         <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-[10px] text-muted-foreground">
-            Updates every minute
-          </span>
+          <LiveDot label="Polls every 60s" />
           <Button
             type="button"
             variant="ghost"

@@ -19,6 +19,7 @@ import type {
   BulkCreateResponse,
   SOP,
   SopStatus,
+  SopListQuery,
   Assignment,
   AssignmentListQuery,
   AssignmentStatus,
@@ -52,7 +53,7 @@ export async function createUser(
     revalidatePath('/dashboard/users')
     return { data }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to create user.' }
   }
 }
@@ -65,7 +66,7 @@ export async function bulkCreateUsers(
     revalidatePath('/dashboard/users')
     return { data }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Bulk import failed.' }
   }
 }
@@ -91,7 +92,7 @@ export async function createDepartment(
     revalidatePath('/dashboard/departments')
     return { data }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to create department.' }
   }
 }
@@ -125,7 +126,7 @@ export async function uploadCompanyLogo(
     return { data }
   } catch (e) {
     console.error('[admin.uploadCompanyLogo]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to upload logo.' }
   }
 }
@@ -192,17 +193,54 @@ export async function verifyAuditEntry(
     return { data }
   } catch (e) {
     console.error('[admin.verifyAuditEntry]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not verify entry.' }
   }
 }
 
 // ─── SOPs ─────────────────────────────────────────────────────────────────────
 
-export async function getSOPs(): Promise<SOP[]> {
+function buildSopQuery(opts?: SopListQuery): string {
+  if (!opts) return ''
+  const params = new URLSearchParams()
+  if (opts.category && opts.category.trim())
+    params.set('category', opts.category.trim())
+  if (opts.status) params.set('status', opts.status)
+  if (opts.search && opts.search.trim())
+    params.set('search', opts.search.trim())
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+export async function getSOPs(opts?: SopListQuery): Promise<SOP[]> {
+  try {
+    const data = await api.get<SOP[] | { sops: SOP[] }>(
+      `/api/sops/${buildSopQuery(opts)}`,
+    )
+    return Array.isArray(data) ? data : (data as { sops: SOP[] }).sops ?? []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Distinct category list pulled from the SOPs the user can see. Falls back
+ * to an empty array when the API returns 4xx; the filter UI shows the chip
+ * row but with no chips, which is fine.
+ */
+export async function getSopCategories(): Promise<string[]> {
   try {
     const data = await api.get<SOP[] | { sops: SOP[] }>('/api/sops/')
-    return Array.isArray(data) ? data : (data as { sops: SOP[] }).sops ?? []
+    const list = Array.isArray(data)
+      ? data
+      : (data as { sops: SOP[] }).sops ?? []
+    const set = new Set<string>()
+    for (const s of list) {
+      if (typeof s.category === 'string' && s.category.trim()) {
+        set.add(s.category.trim())
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
   } catch {
     return []
   }
@@ -216,7 +254,7 @@ export async function createSOP(
     revalidatePath('/dashboard/sops')
     return { data }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to upload SOP.' }
   }
 }
@@ -248,7 +286,7 @@ export async function getSopSignedUrl(
       },
     }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not load PDF.' }
   }
 }
@@ -286,7 +324,7 @@ export async function changeSopStatus(
     return { data }
   } catch (e) {
     console.error('[admin.changeSopStatus]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not change SOP status.' }
   }
 }
@@ -307,7 +345,7 @@ export async function reviseSop(
     return { data }
   } catch (e) {
     console.error('[admin.reviseSop]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not revise SOP.' }
   }
 }
@@ -334,7 +372,7 @@ export async function unlockAssignment(
     return { data }
   } catch (e) {
     console.error('[admin.unlockAssignment]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not unlock assignment.' }
   }
 }
@@ -359,7 +397,7 @@ export async function changeUserRole(
     return { data }
   } catch (e) {
     console.error('[admin.changeUserRole]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not change user role.' }
   }
 }
@@ -371,6 +409,7 @@ export interface FetchError {
   message: string
   code: string
   status?: number
+  requestId?: string
 }
 
 export interface CompanyAssignmentsResult {
@@ -384,7 +423,13 @@ const EMPTY_LIST: CompanyAssignmentList = { data: [], total: 0, page: 1, limit: 
 
 function toFetchError(path: string, e: unknown): FetchError {
   if (e instanceof ApiError) {
-    return { path, message: e.message, code: e.errorCode, status: e.status }
+    return {
+      path,
+      message: e.message,
+      code: e.errorCode,
+      status: e.status,
+      requestId: e.requestId,
+    }
   }
   return {
     path,
@@ -509,7 +554,7 @@ export async function createAssignment(
     revalidatePath('/dashboard/assignments')
     return { data }
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to create assignment.' }
   }
 }
@@ -536,7 +581,7 @@ export async function bulkAssignByDepartment(
   } catch (e) {
     console.error('[admin.bulkAssignByDepartment]', e)
     if (e instanceof ApiError)
-      return { error: e.message, errorCode: e.errorCode }
+      return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to bulk-assign training.' }
   }
 }
@@ -556,7 +601,7 @@ export async function createManualQuiz(
   } catch (e) {
     console.error('[admin.createManualQuiz]', e)
     if (e instanceof ApiError)
-      return { error: e.message, errorCode: e.errorCode }
+      return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Failed to create manual quiz.' }
   }
 }

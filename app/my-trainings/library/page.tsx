@@ -5,7 +5,11 @@
  * Backed by GET /api/sops/ (tenant JWT).
  */
 
-import { getAllSops } from '@/lib/actions/employee'
+import { Suspense } from 'react'
+import {
+  getAllSops,
+  getEmployeeSopCategories,
+} from '@/lib/actions/employee'
 import {
   Card,
   CardContent,
@@ -14,7 +18,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   BookOpenIcon,
   ChevronLeftIcon,
@@ -22,8 +25,17 @@ import {
   ChevronRightIcon,
 } from 'lucide-react'
 import Link from 'next/link'
+import { SopFilters } from '@/components/admin/sop-filters'
+import type { SopStatus } from '@/types/admin'
 
 export const metadata = { title: 'SOP Library' }
+export const dynamic = 'force-dynamic'
+
+const LIBRARY_STATUSES: { value: SopStatus | 'ALL'; label: string }[] = [
+  { value: 'ALL', label: 'Active + archived' },
+  { value: 'ACTIVE', label: 'Active only' },
+  { value: 'ARCHIVED', label: 'Archived' },
+]
 
 const STATUS_COLOURS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -31,9 +43,43 @@ const STATUS_COLOURS: Record<string, string> = {
   ARCHIVED: 'bg-amber-100 text-amber-700 border-amber-200',
 }
 
-export default async function LibraryPage() {
-  const sops = await getAllSops()
-  const visible = sops.filter((s) => (s.status ? s.status !== 'ARCHIVED' : true))
+function FiltersFallback() {
+  return <div className="h-16 animate-pulse rounded-lg border bg-card" />
+}
+
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string
+    status?: string
+    category?: string
+  }>
+}) {
+  const params = await searchParams
+  const filterStatus =
+    params.status === 'ACTIVE' || params.status === 'ARCHIVED'
+      ? (params.status as SopStatus)
+      : undefined
+
+  const [sops, categories] = await Promise.all([
+    getAllSops({
+      search: params.search?.trim() || undefined,
+      status: filterStatus,
+      category: params.category?.trim() || undefined,
+    }),
+    getEmployeeSopCategories(),
+  ])
+
+  // Library default: hide DRAFT/UNDER_REVIEW; show ARCHIVED only if asked.
+  const visible = sops.filter((s) => {
+    if (!s.status) return true
+    if (s.status === 'DRAFT' || s.status === 'UNDER_REVIEW') return false
+    if (s.status === 'ARCHIVED' && filterStatus !== 'ARCHIVED') return false
+    return true
+  })
+
+  const hasFilters = !!params.search || !!filterStatus || !!params.category
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 max-w-6xl mx-auto w-full">
@@ -56,14 +102,25 @@ export default async function LibraryPage() {
         </p>
       </div>
 
+      <Suspense fallback={<FiltersFallback />}>
+        <SopFilters
+          categories={categories}
+          statusOptions={LIBRARY_STATUSES}
+          searchPlaceholder="Search title or description…"
+        />
+      </Suspense>
+
       {visible.length === 0 ? (
         <Card className="border-dashed py-12">
           <CardContent className="flex flex-col items-center justify-center text-center">
             <FileTextIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
-            <CardTitle className="text-lg">No SOPs published yet</CardTitle>
+            <CardTitle className="text-lg">
+              {hasFilters ? 'No matching SOPs' : 'No SOPs published yet'}
+            </CardTitle>
             <CardDescription className="max-w-[360px] mt-2">
-              Your company has not published any SOPs in the library. Once
-              your trainer uploads procedures, they will show up here.
+              {hasFilters
+                ? 'Try clearing the filters above or searching by a different keyword.'
+                : 'Your company has not published any SOPs in the library. Once your trainer uploads procedures, they will show up here.'}
             </CardDescription>
           </CardContent>
         </Card>

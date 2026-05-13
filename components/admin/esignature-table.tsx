@@ -30,7 +30,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { verifyEsignature } from '@/lib/actions/esignatures'
+import { toastActionError } from '@/lib/toast-action-error'
 import {
+  describeInvalidReason,
   getCreatedAt,
   getMeaning,
   getSigner,
@@ -44,15 +46,23 @@ interface Props {
   records: ESignatureRecord[]
   /** Show informational header chip if the server returned an error. */
   error?: string | null
+  /** Correlates list failures with backend logs. */
+  listRequestId?: string | null
 }
 
 type VerifyState =
   | { status: 'idle' }
   | { status: 'pending' }
-  | { status: 'done'; valid: boolean; message?: string | null }
-  | { status: 'error'; message: string }
+  | {
+      status: 'done'
+      valid: boolean
+      message?: string | null
+      payloadOk?: boolean
+      signatureOk?: boolean
+    }
+  | { status: 'error'; message: string; requestId?: string }
 
-export function ESignatureTable({ records, error }: Props) {
+export function ESignatureTable({ records, error, listRequestId }: Props) {
   const [verifications, setVerifications] = useState<
     Record<string, VerifyState>
   >({})
@@ -66,26 +76,34 @@ export function ESignatureTable({ records, error }: Props) {
         const msg = result.error ?? 'Verification failed.'
         setVerifications((prev) => ({
           ...prev,
-          [rec.id]: { status: 'error', message: msg },
+          [rec.id]: {
+            status: 'error',
+            message: msg,
+            requestId: result.requestId,
+          },
         }))
-        toast.error(msg)
+        toastActionError(msg, result.requestId)
         return
       }
       const v = result.data as ESignatureVerifyResult
       const valid = isVerificationValid(v)
+      const message = valid ? null : describeInvalidReason(v)
       setVerifications((prev) => ({
         ...prev,
         [rec.id]: {
           status: 'done',
           valid,
-          message: v.message ?? v.reason ?? null,
+          message,
+          payloadOk: v.payloadHashMatches,
+          signatureOk: v.signatureHashMatches,
         },
       }))
-      toast[valid ? 'success' : 'error'](
-        valid
-          ? `Signature verified for ${rec.id.slice(0, 8)}…`
-          : `Signature integrity check FAILED for ${rec.id.slice(0, 8)}…`,
-      )
+      const short = rec.id.slice(0, 8)
+      if (valid) {
+        toast.success(`Signature verified for ${short}…`)
+      } else {
+        toast.error(`Signature ${short}… — ${message ?? 'invalid'}`)
+      }
     })
   }
 
@@ -95,6 +113,9 @@ export function ESignatureTable({ records, error }: Props) {
         <AlertCircleIcon className="h-8 w-8 opacity-40" />
         <p className="text-sm font-medium">E-signature ledger unavailable.</p>
         <p className="text-xs opacity-80">{error}</p>
+        {listRequestId ? (
+          <p className="font-mono text-[10px] opacity-70">Request ID: {listRequestId}</p>
+        ) : null}
       </div>
     )
   }
@@ -117,7 +138,14 @@ export function ESignatureTable({ records, error }: Props) {
       {error && (
         <div className="flex items-start gap-2 border-b bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           <AlertCircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>{error}</span>
+          <div className="space-y-0.5">
+            <span>{error}</span>
+            {listRequestId ? (
+              <span className="block font-mono text-[10px] opacity-90">
+                Request ID: {listRequestId}
+              </span>
+            ) : null}
+          </div>
         </div>
       )}
       <Table>
@@ -179,30 +207,69 @@ export function ESignatureTable({ records, error }: Props) {
                     </span>
                   )}
                   {verify.status === 'done' && (
-                    <Badge
-                      variant="outline"
-                      className={
-                        verify.valid
-                          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-                      }
-                    >
-                      {verify.valid ? (
-                        <BadgeCheckIcon className="mr-1 h-3 w-3" />
-                      ) : (
-                        <ShieldAlertIcon className="mr-1 h-3 w-3" />
-                      )}
-                      {verify.valid ? 'Valid' : 'Invalid'}
-                      {verify.message ? ` · ${verify.message}` : ''}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        variant="outline"
+                        className={
+                          verify.valid
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                            : 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                        }
+                      >
+                        {verify.valid ? (
+                          <BadgeCheckIcon className="mr-1 h-3 w-3" />
+                        ) : (
+                          <ShieldAlertIcon className="mr-1 h-3 w-3" />
+                        )}
+                        {verify.valid ? 'Valid' : 'Invalid'}
+                      </Badge>
+                      {verify.payloadOk !== undefined ||
+                      verify.signatureOk !== undefined ? (
+                        <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                          <span
+                            className={
+                              verify.signatureOk
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-rose-600 dark:text-rose-400'
+                            }
+                            title="Hash of the ledger entry itself"
+                          >
+                            chain {verify.signatureOk ? '✓' : '✗'}
+                          </span>
+                          <span>·</span>
+                          <span
+                            className={
+                              verify.payloadOk
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-rose-600 dark:text-rose-400'
+                            }
+                            title="Hash of the snapshot of what was signed"
+                          >
+                            payload {verify.payloadOk ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      ) : null}
+                      {!verify.valid && verify.message ? (
+                        <span className="text-[10px] leading-tight text-muted-foreground max-w-[16rem]">
+                          {verify.message}
+                        </span>
+                      ) : null}
+                    </div>
                   )}
                   {verify.status === 'error' && (
-                    <Badge
-                      variant="outline"
-                      className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                    >
-                      Error · {verify.message}
-                    </Badge>
+                    <div className="flex flex-col gap-0.5">
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                      >
+                        Error · {verify.message}
+                      </Badge>
+                      {verify.requestId ? (
+                        <span className="font-mono text-[9px] text-muted-foreground">
+                          req {verify.requestId.slice(0, 8)}…
+                        </span>
+                      ) : null}
+                    </div>
                   )}
                 </TableCell>
                 <TableCell className="text-right">

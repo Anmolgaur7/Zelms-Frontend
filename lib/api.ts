@@ -19,22 +19,54 @@ export class ApiError extends Error {
   errorCode: string
   status: number
   details?: unknown
+  /** From response `x-request-id` or the outbound `X-Request-ID` we sent. */
+  requestId?: string
 
   constructor(
     message: string,
     errorCode: string,
     status: number,
     details?: unknown,
+    requestId?: string,
   ) {
     super(message)
     this.name = 'ApiError'
     this.errorCode = errorCode
     this.status = status
     this.details = details
+    this.requestId = requestId
   }
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
+function newRequestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
+
+function mergeHeaders(
+  base: Record<string, string>,
+  extra: RequestInit['headers'],
+): Record<string, string> {
+  const out: Record<string, string> = { ...base }
+  if (!extra) return out
+  if (extra instanceof Headers) {
+    extra.forEach((value, key) => {
+      out[key] = value
+    })
+    return out
+  }
+  if (Array.isArray(extra)) {
+    for (const [k, v] of extra) {
+      out[k] = v
+    }
+    return out
+  }
+  return { ...out, ...(extra as Record<string, string>) }
+}
+
 async function serverRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -54,29 +86,59 @@ async function serverRequest<T>(
     baseHeaders['Authorization'] = `Bearer ${token}`
   }
 
+  const outboundId = newRequestId()
+  const merged = mergeHeaders(baseHeaders, options.headers)
+  if (!merged['X-Request-ID'] && !merged['x-request-id']) {
+    merged['X-Request-ID'] = outboundId
+  }
+  const sentRequestId = merged['X-Request-ID'] ?? merged['x-request-id'] ?? outboundId
+
+  const method = (options.method ?? 'GET').toUpperCase()
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: {
-      ...baseHeaders,
-      ...(options.headers as Record<string, string> | undefined),
-    },
+    headers: merged,
     cache: 'no-store',
   })
 
+  const responseRequestId =
+    res.headers.get('x-request-id') ?? res.headers.get('X-Request-ID') ?? sentRequestId
+
   // Parse response body
   const contentType = res.headers.get('content-type') ?? ''
-  const data: unknown = contentType.includes('application/json')
-    ? await res.json()
-    : await res.text()
+  let data: unknown
+  try {
+    data = contentType.includes('application/json')
+      ? await res.json()
+      : await res.text()
+  } catch {
+    data = null
+  }
 
   if (!res.ok) {
-    const err = data as { message?: string; errorCode?: string; details?: unknown }
-    throw new ApiError(
-      err.message ?? `HTTP ${res.status}`,
-      err.errorCode ?? 'UNKNOWN_ERROR',
+    const err = (data && typeof data === 'object'
+      ? data
+      : {}) as { message?: string; errorCode?: string; details?: unknown }
+    const message =
+      typeof err.message === 'string'
+        ? err.message
+        : typeof data === 'string' && data
+          ? data
+          : `HTTP ${res.status}`
+    const errorCode =
+      typeof err.errorCode === 'string' ? err.errorCode : 'UNKNOWN_ERROR'
+
+    console.error(
+      '[api]',
+      method,
+      path,
       res.status,
-      err.details,
+      errorCode,
+      responseRequestId,
+      message,
     )
+
+    throw new ApiError(message, errorCode, res.status, err.details, responseRequestId)
   }
 
   return data as T

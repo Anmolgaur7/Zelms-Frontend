@@ -63,4 +63,6 @@ export interface ActionResult<T = void> {
   data?: T
   error?: string
   errorCode?: string
+  /** Echoed from `x-request-id` (or outbound `X-Request-ID`) for support triage. */
+  requestId?: string
 }

@@ -63,6 +63,7 @@ export interface ActionResultLite<T> {
   data?: T
   error?: string
   errorCode?: string
+  requestId?: string
 }
 
 export interface EsignFormDialogProps<TSchema extends ZodTypeAny, TData> {
@@ -108,6 +109,7 @@ export function EsignFormDialog<
 }: EsignFormDialogProps<TSchema, TData>) {
   const [open, setOpen] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [supportRequestId, setSupportRequestId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const reasonFieldId = useId()
   const passwordFieldId = useId()
@@ -122,6 +124,7 @@ export function EsignFormDialog<
     if (open) {
       form.reset(defaultValues)
       setServerError(null)
+      setSupportRequestId(null)
     }
   }, [open, form, defaultValues])
 
@@ -130,6 +133,7 @@ export function EsignFormDialog<
 
   const submit = (values: z.infer<TSchema>) => {
     setServerError(null)
+    setSupportRequestId(null)
     startTransition(async () => {
       const result = await onSubmit(values)
       if (result.error) {
@@ -143,6 +147,7 @@ export function EsignFormDialog<
             'The chosen status is not a valid next state for this SOP.',
         }
         setServerError(friendlyByCode[result.errorCode ?? ''] ?? result.error)
+        setSupportRequestId(result.requestId ?? null)
         return
       }
       const msg =
@@ -243,7 +248,14 @@ export function EsignFormDialog<
           {serverError && (
             <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
               <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{serverError}</span>
+              <div className="space-y-1">
+                <p>{serverError}</p>
+                {supportRequestId ? (
+                  <p className="font-mono text-[11px] text-red-700/90 dark:text-red-300/90">
+                    Request ID: {supportRequestId}
+                  </p>
+                ) : null}
+              </div>
             </div>
           )}
 

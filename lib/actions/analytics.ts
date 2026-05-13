@@ -30,11 +30,18 @@ export interface AnalyticsFetchError {
   message: string
   code: string
   status?: number
+  requestId?: string
 }
 
 function toFetchError(path: string, e: unknown): AnalyticsFetchError {
   if (e instanceof ApiError) {
-    return { path, message: e.message, code: e.errorCode, status: e.status }
+    return {
+      path,
+      message: e.message,
+      code: e.errorCode,
+      status: e.status,
+      requestId: e.requestId,
+    }
   }
   return {
     path,
@@ -161,11 +168,23 @@ export async function getTrainingReport(): Promise<TrainingReportResult> {
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('pharma_token')?.value
+    const outboundId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+    const headers: Record<string, string> = {
+      'X-Request-ID': outboundId,
+    }
+    if (token) headers.Authorization = `Bearer ${token}`
+
     const res = await fetch(`${BASE_URL}${path}`, {
       method: 'GET',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
       cache: 'no-store',
     })
+
+    const responseRequestId =
+      res.headers.get('x-request-id') ?? res.headers.get('X-Request-ID') ?? outboundId
 
     if (!res.ok) {
       // Try to surface the JSON envelope when present.
@@ -188,6 +207,7 @@ export async function getTrainingReport(): Promise<TrainingReportResult> {
           message,
           code: errorCode,
           status: res.status,
+          requestId: responseRequestId,
         },
       }
     }

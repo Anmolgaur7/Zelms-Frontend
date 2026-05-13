@@ -4,9 +4,12 @@
  * SOP management — List all uploaded procedures.
  */
 
-import { getSOPs } from '@/lib/actions/admin'
+import { Suspense } from 'react'
+import { getSOPs, getSopCategories } from '@/lib/actions/admin'
 import { getSession } from '@/lib/session'
 import { Button } from '@/components/ui/button'
+import { SopFilters } from '@/components/admin/sop-filters'
+import type { SopStatus } from '@/types/admin'
 import {
   Table,
   TableBody,
@@ -36,6 +39,14 @@ import { SopReviseDialog } from '@/components/admin/sop-revise-dialog'
 import { ManualQuizDialog } from '@/components/admin/manual-quiz-dialog'
 
 export const metadata = { title: 'SOPs' }
+export const dynamic = 'force-dynamic'
+
+const VALID_STATUSES: SopStatus[] = [
+  'DRAFT',
+  'UNDER_REVIEW',
+  'ACTIVE',
+  'ARCHIVED',
+]
 
 const STATUS_COLOURS: Record<string, string> = {
   DRAFT:        'bg-slate-100 text-slate-700 border-slate-200',
@@ -51,12 +62,40 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'Archived',
 }
 
-export default async function SOPsPage() {
-  const [sops, session] = await Promise.all([getSOPs(), getSession()])
+function FiltersFallback() {
+  return (
+    <div className="h-16 animate-pulse rounded-lg border bg-card" />
+  )
+}
+
+export default async function SOPsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    search?: string
+    status?: string
+    category?: string
+  }>
+}) {
+  const params = await searchParams
+  const status = VALID_STATUSES.includes(params.status as SopStatus)
+    ? (params.status as SopStatus)
+    : undefined
+
+  const [sops, session, categories] = await Promise.all([
+    getSOPs({
+      search: params.search?.trim() || undefined,
+      status,
+      category: params.category?.trim() || undefined,
+    }),
+    getSession(),
+    getSopCategories(),
+  ])
   const canAuthorQuizzes =
     session?.role === 'ADMIN' ||
     session?.role === 'SUPER_ADMIN' ||
     session?.role === 'TRAINER'
+  const hasFilters = !!params.search || !!status || !!params.category
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -64,7 +103,8 @@ export default async function SOPsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Standard Operating Procedures</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {sops.length} document{sops.length !== 1 ? 's' : ''} in the library
+            {sops.length} document{sops.length !== 1 ? 's' : ''}
+            {hasFilters ? ' match the current filters' : ' in the library'}
           </p>
         </div>
         <CreateSOPModal
@@ -76,6 +116,11 @@ export default async function SOPsPage() {
           }
         />
       </div>
+
+      {/* Next 15: useSearchParams() inside SopFilters must sit under Suspense */}
+      <Suspense fallback={<FiltersFallback />}>
+        <SopFilters categories={categories} />
+      </Suspense>
 
       <Card>
         <CardHeader className="pb-3">
@@ -91,14 +136,20 @@ export default async function SOPsPage() {
           {sops.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
               <FileTextIcon className="h-10 w-10 opacity-20" />
-              <p className="text-sm">No SOPs found.</p>
-              <CreateSOPModal
-                trigger={
-                  <Button size="sm" variant="outline">
-                    <FileUpIcon className="mr-2 h-4 w-4" /> Upload your first SOP
-                  </Button>
-                }
-              />
+              <p className="text-sm">
+                {hasFilters
+                  ? 'No SOPs match the current filters.'
+                  : 'No SOPs found.'}
+              </p>
+              {!hasFilters ? (
+                <CreateSOPModal
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      <FileUpIcon className="mr-2 h-4 w-4" /> Upload your first SOP
+                    </Button>
+                  }
+                />
+              ) : null}
             </div>
           ) : (
             <Table>

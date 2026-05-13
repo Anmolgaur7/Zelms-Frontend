@@ -264,7 +264,14 @@ export default async function AssignmentsPage({
         <KpiRow stats={stats} />
       ) : statsError ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-300">
-          KPIs unavailable: {statsError.code} · {statsError.message}
+          <p>
+            KPIs unavailable: {statsError.code} · {statsError.message}
+          </p>
+          {statsError.requestId ? (
+            <p className="mt-1 font-mono text-[10px] opacity-90">
+              Request ID: {statsError.requestId}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -278,6 +285,11 @@ export default async function AssignmentsPage({
               {error.path} → {error.status ? `${error.status} ` : ''}
               {error.code} · {error.message}
             </p>
+            {error.requestId ? (
+              <p className="text-xs font-mono opacity-80">
+                Request ID: {error.requestId}
+              </p>
+            ) : null}
             {error.code === 'TENANT_REQUIRED' && (
               <p className="text-xs opacity-80">
                 You are signed in as a platform admin. Switch to a tenant admin

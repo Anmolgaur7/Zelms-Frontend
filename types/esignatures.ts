@@ -79,6 +79,20 @@ export interface ESignatureVerifyResult {
   reason?: string | null
   computedHash?: string | null
   expectedHash?: string | null
+
+  /**
+   * GxP integrity breakdown. The backend currently returns:
+   *   - `signatureHashMatches` — the chain entry itself is intact (no
+   *     tampering of the e-signature row).
+   *   - `payloadHashMatches`   — the snapshot of what was signed still hashes
+   *     to the value recorded at sign time. False means either the underlying
+   *     entity was edited post-signature or the canonical-payload formatter
+   *     changed.
+   */
+  payloadHashMatches?: boolean
+  signatureHashMatches?: boolean
+  verifiedAt?: string | null
+
   /** Forward-compat. */
   [key: string]: unknown
 }
@@ -151,5 +165,34 @@ export function isVerificationValid(v: ESignatureVerifyResult): boolean {
   if (typeof v.status === 'string') {
     return ['VALID', 'OK', 'PASSED', 'TRUE'].includes(v.status.toUpperCase())
   }
+  // Granular fall-back: if both hashes match it's effectively valid.
+  if (
+    v.payloadHashMatches !== undefined &&
+    v.signatureHashMatches !== undefined
+  ) {
+    return !!v.payloadHashMatches && !!v.signatureHashMatches
+  }
   return false
+}
+
+/**
+ * Produce a human-readable summary of an invalid verification. Surfaces the
+ * granular hash breakdown the backend ships (`payloadHashMatches`,
+ * `signatureHashMatches`) so admins know *what* is mismatching.
+ */
+export function describeInvalidReason(v: ESignatureVerifyResult): string {
+  if (v.message) return v.message
+  if (v.reason) return v.reason
+  const payloadOk = v.payloadHashMatches
+  const sigOk = v.signatureHashMatches
+  if (payloadOk === false && sigOk === true) {
+    return 'Payload hash mismatch — the signed entity has changed since signing.'
+  }
+  if (payloadOk === true && sigOk === false) {
+    return 'Signature chain mismatch — the ledger row itself was modified.'
+  }
+  if (payloadOk === false && sigOk === false) {
+    return 'Both payload and chain hashes differ from the stored values.'
+  }
+  return 'Verification failed.'
 }

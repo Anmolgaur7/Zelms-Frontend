@@ -36,6 +36,7 @@ export interface FetchError {
   message: string
   code: string
   status?: number
+  requestId?: string
 }
 
 export type FetchResult<T> =
@@ -44,7 +45,12 @@ export type FetchResult<T> =
 
 function toError(e: unknown): FetchError {
   if (e instanceof ApiError) {
-    return { message: e.message, code: e.errorCode, status: e.status }
+    return {
+      message: e.message,
+      code: e.errorCode,
+      status: e.status,
+      requestId: e.requestId,
+    }
   }
   return {
     message: e instanceof Error ? e.message : 'Unknown error',
@@ -153,12 +159,50 @@ export async function getQuizzesBySOP(sopId: string): Promise<Quiz[]> {
 
 // ─── SOP library (self-study) ────────────────────────────────────────────────
 
-export async function getAllSops(): Promise<SOP[]> {
+function buildSopQuery(opts?: {
+  category?: string
+  status?: SOP['status']
+  search?: string
+}): string {
+  if (!opts) return ''
+  const params = new URLSearchParams()
+  if (opts.category && opts.category.trim())
+    params.set('category', opts.category.trim())
+  if (opts.status) params.set('status', opts.status)
+  if (opts.search && opts.search.trim())
+    params.set('search', opts.search.trim())
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+export async function getAllSops(opts?: {
+  category?: string
+  status?: SOP['status']
+  search?: string
+}): Promise<SOP[]> {
   try {
-    const raw = await api.get<unknown>('/api/sops/')
+    const raw = await api.get<unknown>(`/api/sops/${buildSopQuery(opts)}`)
     return unwrapList<SOP>(raw, 'sops')
   } catch (e) {
     console.error('[employee.getAllSops]', e)
+    return []
+  }
+}
+
+/** Distinct category list for the library filter chips. */
+export async function getEmployeeSopCategories(): Promise<string[]> {
+  try {
+    const raw = await api.get<unknown>('/api/sops/')
+    const list = unwrapList<SOP>(raw, 'sops')
+    const set = new Set<string>()
+    for (const s of list) {
+      if (typeof s.category === 'string' && s.category.trim()) {
+        set.add(s.category.trim())
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  } catch (e) {
+    console.error('[employee.getEmployeeSopCategories]', e)
     return []
   }
 }

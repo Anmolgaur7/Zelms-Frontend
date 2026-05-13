@@ -22,6 +22,7 @@ export interface ESignatureListResult {
   records: ESignatureRecord[]
   error?: string
   errorCode?: string
+  requestId?: string
 }
 
 interface ListEnvelope {
@@ -44,24 +45,16 @@ export async function listEsignatures(): Promise<ESignatureListResult> {
   try {
     const raw = await api.get<unknown>('/api/esignatures/')
     const records = unwrap(raw)
-    // One-time diagnostic so we can confirm the exact backend shape.
-    // Remove once parsing is stable.
-    if (records.length > 0) {
-      const sample = records[0]
-      console.log(
-        '[esignatures.listEsignatures] sample keys:',
-        Object.keys(sample as object),
-      )
-      console.log(
-        '[esignatures.listEsignatures] sample record:',
-        JSON.stringify(sample),
-      )
-    }
     return { records }
   } catch (e) {
     console.error('[esignatures.listEsignatures]', e)
     if (e instanceof ApiError) {
-      return { records: [], error: e.message, errorCode: e.errorCode }
+      return {
+        records: [],
+        error: e.message,
+        errorCode: e.errorCode,
+        requestId: e.requestId,
+      }
     }
     return { records: [], error: 'Could not load e-signature ledger.' }
   }
@@ -74,14 +67,14 @@ export async function verifyEsignature(
     const raw = await api.get<ESignatureVerifyResult>(
       `/api/esignatures/${id}/verify`,
     )
-    console.log(
-      '[esignatures.verifyEsignature] response:',
-      JSON.stringify(raw),
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[esignatures.verifyEsignature]', JSON.stringify(raw))
+    }
     return { data: { id, ...raw } }
   } catch (e) {
     console.error('[esignatures.verifyEsignature]', e)
-    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    if (e instanceof ApiError)
+      return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
     return { error: 'Could not verify signature.' }
   }
 }

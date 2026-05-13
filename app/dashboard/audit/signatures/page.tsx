@@ -8,7 +8,7 @@
  */
 
 import Link from 'next/link'
-import { ArrowLeftIcon, ShieldCheckIcon } from 'lucide-react'
+import { ArrowLeftIcon, InfoIcon, ShieldCheckIcon } from 'lucide-react'
 
 import { listEsignatures } from '@/lib/actions/esignatures'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ import { ESignatureTable } from '@/components/admin/esignature-table'
 export const metadata = { title: 'E-signature ledger' }
 
 export default async function ESignaturesPage() {
-  const { records, error } = await listEsignatures()
+  const { records, error, requestId } = await listEsignatures()
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -47,6 +47,24 @@ export default async function ESignaturesPage() {
         </Button>
       </div>
 
+      <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-4 py-3 text-xs text-blue-900 dark:text-blue-200">
+        <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="space-y-1">
+          <p>
+            Each verification reports two hashes:{' '}
+            <span className="font-medium">chain</span> (the ledger entry
+            itself) and <span className="font-medium">payload</span> (the
+            snapshot of what was signed).
+          </p>
+          <p className="opacity-80">
+            A <span className="font-medium">chain ✓ / payload ✗</span> result
+            means the e-signature row is intact but the underlying entity was
+            modified after signing — that&apos;s a backend integrity gap, not a
+            UI bug. Share the failing signature id with the backend team.
+          </p>
+        </div>
+      </div>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-medium">
@@ -60,7 +78,11 @@ export default async function ESignaturesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <ESignatureTable records={records} error={error ?? null} />
+          <ESignatureTable
+            records={records}
+            error={error ?? null}
+            listRequestId={requestId ?? null}
+          />
         </CardContent>
       </Card>
     </div>

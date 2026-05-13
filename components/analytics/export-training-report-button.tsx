@@ -13,6 +13,7 @@ import { DownloadIcon, Loader2Icon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { toastActionError } from '@/lib/toast-action-error'
 import { getTrainingReport } from '@/lib/actions/analytics'
 
 export function ExportTrainingReportButton({
@@ -50,7 +51,10 @@ export function ExportTrainingReportButton({
       try {
         const { file, error } = await getTrainingReport()
         if (error || !file) {
-          toast.error(error?.message ?? 'Failed to export training report.')
+          toastActionError(
+            error?.message ?? 'Failed to export training report.',
+            error?.requestId,
+          )
           return
         }
         downloadBase64(file.base64, file.mimeType, file.filename)

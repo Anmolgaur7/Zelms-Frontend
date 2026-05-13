@@ -13,6 +13,8 @@ This document is the single source of truth for phasing the remaining work and t
 
 ## 1. Where the frontend stands today
 
+> **Status (May 13, 2026):** Phases 1–6 and 8 are complete. Phase 8 adds request tracing (`X-Request-ID`), correlated error toasts and inline banners, and notification polling polish. Platform-admin tenant onboarding (Phase 7) remains a separate track. See per-phase status flags below.
+
 ### 1.1 Built (working)
 
 | Area | Routes | Endpoints wired |
@@ -110,7 +112,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 1 — Fill the 404 traps (≈ 1 day)
+### Phase 1 — Fill the 404 traps (≈ 1 day)  ·  **DONE**
 
 **Goal**: every link in the sidebar and dashboard quick-actions resolves to a real page. No new analytics work, just plug the holes.
 
@@ -125,7 +127,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 2 — Lifecycle hardening: SOP status, revise, unlock, role change (≈ 1–2 days)
+### Phase 2 — Lifecycle hardening: SOP status, revise, unlock, role change (≈ 1–2 days)  ·  **DONE**
 
 **Goal**: ship all the e-signed / privileged mutations the backend already supports. Without these, admins can't change anything after creating it.
 
@@ -140,7 +142,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 3 — Notifications & E-signature ledger (≈ 1 day)
+### Phase 3 — Notifications & E-signature ledger (≈ 1 day)  ·  **DONE**
 
 **Goal**: a notification bell in the header (count + dropdown) and a `/dashboard/audit/signatures` view (auditor + admin).
 
@@ -155,7 +157,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 4 — Analytics & reporting (≈ 2 days)
+### Phase 4 — Analytics & reporting (≈ 2 days)  ·  **DONE**
 
 **Goal**: real numbers on the admin dashboard, plus three analytics pages.
 
@@ -172,7 +174,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 5 — Bulk operations & manual quizzes (≈ 1 day)
+### Phase 5 — Bulk operations & manual quizzes (≈ 1 day)  ·  **DONE**
 
 **Goal**: power-user features for trainers/admins.
 
@@ -187,7 +189,7 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 6 — SOP polish & search (≈ 0.5 day)
+### Phase 6 — SOP polish & search (≈ 0.5 day)  ·  **DONE**
 
 **Goal**: SOP list scales beyond 20 docs.
 
@@ -219,18 +221,18 @@ Each phase has: **Goal · Routes · Server actions · Components · Types · End
 
 ---
 
-### Phase 8 — Real-time + polish (≈ 1–2 days, optional)
+### Phase 8 — Real-time + polish (≈ 1–2 days, optional)  ·  **DONE**
 
 **Goal**: live updates, request tracing, and developer experience improvements.
 
 | Item | Detail |
 |---|---|
 | Routes | none |
-| Server actions | wrap fetch to forward `x-request-id` header (already mentioned in docs §1) |
-| Components | `<LiveDot>` for any list that should auto-refresh, `<RequestIdToast>` (devtool — shows the request id on every error toast) |
-| Types | extend `ApiError` with `requestId` |
+| Server actions | `lib/api` generates/forwards `X-Request-ID`, surfaces `requestId` on `ApiError` and key `ActionResult` failures; auth and analytics export paths aligned |
+| Components | `<LiveDot>` on notification bell (60s poll); `toastActionError` (Sonner) shows request id in the toast description; inline banners on assignments, e-signature ledger, and export flows when applicable |
+| Types | `ApiError.requestId`, `ActionResult.requestId`, shared fetch error envelopes |
 | Endpoints | none (uses headers already exposed) |
-| Acceptance | Notification bell polls every 60s. Errors in toasts show a request id for backend support. All Server Actions log the request id when failing. |
+| Acceptance | Notification bell polls every 60s while the tab is visible. User-visible errors prefer toasts or banners that include a request id when the backend returned one. Failed API calls are logged with method, path, status, and request id server-side. |
 
 ---
 
@@ -267,7 +269,7 @@ A phase ships only when **all** of the following are true.
 | R2 | Backend may rate-limit notification polling. | Default to 60 s; expose a setting. |
 | R3 | No OpenAPI spec — response shapes are inferred from Postman happy-path. | Treat first deploy of each new page as a smoke test; surface raw error envelope in non-prod via a debug query string. |
 | R4 | Platform admin "separate app" guidance vs same-repo decision. | Locked in at Phase 7 start. |
-| R5 | Some `latest`-pinned deps (`recharts`, `sonner`, `@tanstack/react-table`). | Decide before Phase 4 (chart-heavy) — pin to a real version once we know charts render. |
+| R5 | Some `latest`-pinned deps (`recharts`, `sonner`, `@tanstack/react-table`, `@dnd-kit/*`). | **Resolved** — pinned to the versions resolved at Phase 6 ship (`recharts@3.8.1`, `sonner@2.0.7`, `@tanstack/react-table@8.21.3`, `@dnd-kit/core@6.3.1`, etc.) so deploys are reproducible. |
 
 ---
 

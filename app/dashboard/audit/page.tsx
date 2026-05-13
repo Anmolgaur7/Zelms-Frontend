@@ -6,6 +6,7 @@
  * deep-linking keep working.
  */
 
+import { Suspense } from 'react'
 import { getAuditFeed } from '@/lib/actions/admin'
 import { AuditLogTable } from '@/components/admin/audit-log-table'
 import {
@@ -18,9 +19,21 @@ import {
 import { ShieldCheckIcon } from 'lucide-react'
 
 export const metadata = { title: 'Audit Log' }
+export const dynamic = 'force-dynamic'
 
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
+
+function AuditTableSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 p-6 text-sm text-muted-foreground">
+      <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+      <div className="h-10 w-full animate-pulse rounded bg-muted" />
+      <div className="h-10 w-full animate-pulse rounded bg-muted" />
+      <div className="h-10 w-full animate-pulse rounded bg-muted" />
+    </div>
+  )
+}
 
 function parseIntInRange(
   value: string | string[] | undefined,
@@ -66,7 +79,10 @@ export default async function AuditLogPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <AuditLogTable feed={feed} />
+          {/* Next 15: useSearchParams() inside AuditLogTable must sit under Suspense */}
+          <Suspense fallback={<AuditTableSkeleton />}>
+            <AuditLogTable feed={feed} />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

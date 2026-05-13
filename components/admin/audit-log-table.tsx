@@ -60,12 +60,21 @@ const ACTION_COLOURS: Record<string, string> = {
   STATUS_CHANGED: 'bg-purple-100 text-purple-700 border-purple-200',
 }
 
-function actionColour(action: string): string {
+function actionColour(action: string | undefined | null): string {
+  if (!action || typeof action !== 'string') {
+    return 'bg-muted text-muted-foreground'
+  }
   // Match on the last suffix segment (e.g. SOP_STATUS_CHANGED → STATUS_CHANGED).
   for (const key of Object.keys(ACTION_COLOURS)) {
     if (action.endsWith(key)) return ACTION_COLOURS[key]
   }
   return 'bg-muted text-muted-foreground'
+}
+
+function formatAuditWhen(iso: string | undefined | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString()
 }
 
 export function AuditLogTable({ feed }: AuditLogTableProps) {
@@ -80,7 +89,8 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [isVerifying, startVerify] = useTransition()
 
-  const { logs, page, limit, total, hasMore } = feed
+  const { logs: rawLogs, page, limit, total, hasMore } = feed
+  const logs = Array.isArray(rawLogs) ? rawLogs : []
   const computedHasMore =
     typeof hasMore === 'boolean'
       ? hasMore
@@ -115,8 +125,9 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
         return
       }
       setVerification(result.data)
-      toast[result.data.valid ? 'success' : 'error'](
-        result.data.valid ? 'Hash chain intact.' : 'Integrity check failed.',
+      const ok = result.data.valid === true
+      toast[ok ? 'success' : 'error'](
+        ok ? 'Hash chain intact.' : 'Integrity check failed.',
       )
     })
   }
@@ -152,7 +163,7 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
             return (
               <TableRow key={entry.id}>
                 <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                  {new Date(entry.createdAt).toLocaleString()}
+                  {formatAuditWhen(entry.createdAt)}
                 </TableCell>
                 <TableCell>
                   <span
@@ -160,7 +171,7 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
                       entry.action,
                     )}`}
                   >
-                    {entry.action}
+                    {entry.action ?? 'UNKNOWN'}
                   </span>
                 </TableCell>
                 <TableCell className="text-sm">
@@ -231,16 +242,14 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
               Audit entry
             </DialogTitle>
             <DialogDescription>
-              {selected
-                ? new Date(selected.createdAt).toLocaleString()
-                : null}
+              {selected ? formatAuditWhen(selected.createdAt) : null}
             </DialogDescription>
           </DialogHeader>
 
           {selected && (
             <div className="space-y-4 pt-1 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <KV label="Action" value={selected.action} />
+                <KV label="Action" value={selected.action ?? '—'} />
                 <KV label="Entry ID" value={selected.id} mono />
                 <KV label="Target" value={selected.targetType ?? '—'} />
                 <KV
@@ -331,12 +340,12 @@ export function AuditLogTable({ feed }: AuditLogTableProps) {
                   <Badge
                     variant="outline"
                     className={
-                      verification.valid
+                      verification.valid === true
                         ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                         : 'border-rose-300 bg-rose-50 text-rose-700'
                     }
                   >
-                    {verification.valid ? (
+                    {verification.valid === true ? (
                       <>
                         <ShieldCheckIcon className="mr-1 h-3 w-3" /> Chain
                         intact
