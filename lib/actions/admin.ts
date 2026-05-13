@@ -513,3 +513,50 @@ export async function createAssignment(
     return { error: 'Failed to create assignment.' }
   }
 }
+
+// ─── Bulk department assignment ───────────────────────────────────────────────
+
+import type {
+  BulkAssignmentBody,
+  BulkAssignmentResult,
+  ManualQuizBody,
+  ManualQuizResponse,
+} from '@/types/quizzes'
+
+export async function bulkAssignByDepartment(
+  body: BulkAssignmentBody,
+): Promise<ActionResult<BulkAssignmentResult>> {
+  try {
+    const data = await api.post<BulkAssignmentResult>(
+      '/api/assignments/bulk-department',
+      body,
+    )
+    revalidatePath('/dashboard/assignments')
+    return { data }
+  } catch (e) {
+    console.error('[admin.bulkAssignByDepartment]', e)
+    if (e instanceof ApiError)
+      return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Failed to bulk-assign training.' }
+  }
+}
+
+// ─── Manual quiz authoring ────────────────────────────────────────────────────
+
+export async function createManualQuiz(
+  body: ManualQuizBody,
+): Promise<ActionResult<ManualQuizResponse>> {
+  try {
+    const data = await api.post<ManualQuizResponse>(
+      '/api/quizzes/manual',
+      body,
+    )
+    revalidatePath('/dashboard/sops')
+    return { data }
+  } catch (e) {
+    console.error('[admin.createManualQuiz]', e)
+    if (e instanceof ApiError)
+      return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Failed to create manual quiz.' }
+  }
+}

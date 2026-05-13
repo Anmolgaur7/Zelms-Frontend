@@ -5,7 +5,7 @@
  */
 
 import { getSOPs } from '@/lib/actions/admin'
-import { Badge } from '@/components/ui/badge'
+import { getSession } from '@/lib/session'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -22,11 +22,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { FileTextIcon, FileUpIcon, GitBranchIcon, ShieldCheckIcon } from 'lucide-react'
+import {
+  FileTextIcon,
+  FileUpIcon,
+  GitBranchIcon,
+  ListChecksIcon,
+  ShieldCheckIcon,
+} from 'lucide-react'
 import { CreateSOPModal } from '@/components/modals/create-sop-modal'
 import { SopViewButton } from '@/components/admin/sop-view-button'
 import { SopStatusDialog } from '@/components/admin/sop-status-dialog'
 import { SopReviseDialog } from '@/components/admin/sop-revise-dialog'
+import { ManualQuizDialog } from '@/components/admin/manual-quiz-dialog'
 
 export const metadata = { title: 'SOPs' }
 
@@ -45,7 +52,11 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default async function SOPsPage() {
-  const sops = await getSOPs()
+  const [sops, session] = await Promise.all([getSOPs(), getSession()])
+  const canAuthorQuizzes =
+    session?.role === 'ADMIN' ||
+    session?.role === 'SUPER_ADMIN' ||
+    session?.role === 'TRAINER'
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -154,6 +165,25 @@ export default async function SOPsPage() {
                             </Button>
                           }
                         />
+
+                        {canAuthorQuizzes ? (
+                          <ManualQuizDialog
+                            sopId={sop.id}
+                            sopTitle={sop.title}
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Author manual quiz"
+                                title="Author manual quiz"
+                              >
+                                <ListChecksIcon className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

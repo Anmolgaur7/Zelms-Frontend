@@ -20,6 +20,7 @@ import {
   LockIcon,
   TrendingUpIcon,
   UnlockIcon,
+  UserPlusIcon,
   UsersIcon,
   XCircleIcon,
 } from 'lucide-react'
@@ -45,6 +46,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { CreateAssignmentModal } from '@/components/modals/create-assignment-modal'
+import { BulkAssignDialog } from '@/components/admin/bulk-assign-dialog'
 import { SopViewButton } from '@/components/admin/sop-view-button'
 import { AssignmentFilters } from '@/components/admin/assignment-filters'
 import { PaginationBar } from '@/components/admin/pagination-bar'
@@ -226,14 +228,24 @@ export default async function AssignmentsPage({
           </p>
         </div>
         {canMutateAssignments ? (
-          <CreateAssignmentModal
-            trigger={
-              <Button size="sm">
-                <ClipboardCheckIcon className="mr-2 h-4 w-4" />
-                Assign Training
-              </Button>
-            }
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <BulkAssignDialog
+              trigger={
+                <Button size="sm" variant="outline">
+                  <UsersIcon className="mr-2 h-4 w-4" />
+                  Bulk assign
+                </Button>
+              }
+            />
+            <CreateAssignmentModal
+              trigger={
+                <Button size="sm">
+                  <UserPlusIcon className="mr-2 h-4 w-4" />
+                  Assign Training
+                </Button>
+              }
+            />
+          </div>
         ) : (
           <Button
             size="sm"
