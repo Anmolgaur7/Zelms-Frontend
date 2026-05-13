@@ -8,21 +8,53 @@ import './globals.css'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
+const siteName = 'ZEAVAR Pharma Training LMS'
+
+const siteDescription =
+  'GxP-compliant pharma training platform — manage SOPs, training assignments, and electronic signatures with ZEAVAR.'
+
+const metadataBaseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
 export const metadata: Metadata = {
+  metadataBase: new URL(metadataBaseUrl),
   title: {
-    default: 'Klonix Pharma LMS',
-    template: '%s | Klonix Pharma LMS',
+    default: siteName,
+    template: `%s | ${siteName}`,
   },
-  description:
-    'GxP-compliant Pharma Learning Management System — manage SOPs, training assignments, and electronic signatures.',
-  keywords: ['pharma', 'LMS', 'training', 'GxP', 'SOP', 'compliance'],
+  description: siteDescription,
+  applicationName: 'ZEAVAR',
+  keywords: [
+    'ZEAVAR',
+    'pharma',
+    'LMS',
+    'training',
+    'GxP',
+    'SOP',
+    'compliance',
+    'pharmaceutical',
+  ],
+  authors: [{ name: 'Zeavar' }],
+  openGraph: {
+    type: 'website',
+    siteName: siteName,
+    title: siteName,
+    description: siteDescription,
+  },
+  twitter: {
+    card: 'summary',
+    title: siteName,
+    description: siteDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.png',
+    icon: [{ url: '/wheellogo.png', type: 'image/png' }],
+    apple: '/wheellogo.png',
+    shortcut: '/wheellogo.png',
   },
 }
 

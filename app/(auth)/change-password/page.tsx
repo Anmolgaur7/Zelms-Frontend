@@ -84,7 +84,7 @@ export default function ChangePasswordPage() {
         return
       }
 
-      toast.success('Password updated successfully! Welcome to Klonix.')
+      toast.success('Password updated successfully! Welcome to ZEAVAR.')
       router.push('/dashboard')
       router.refresh()
     })

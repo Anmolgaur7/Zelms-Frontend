@@ -98,6 +98,10 @@ const config: Config = {
           '0%, 100%': { opacity: '0.65' },
           '50%': { opacity: '1' },
         },
+        'zeavar-wheel-once': {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,8 @@ const config: Config = {
         'scale-in': 'scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both',
         'slide-in-right': 'slide-in-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) both',
         'pulse-soft': 'pulse-soft 2.4s ease-in-out infinite',
+        'zeavar-wheel-once':
+          'zeavar-wheel-once 1s cubic-bezier(0.22, 1, 0.36, 1) 1 both',
       },
       transitionTimingFunction: {
         'out-expo': 'cubic-bezier(0.22, 1, 0.36, 1)',

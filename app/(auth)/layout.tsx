@@ -4,7 +4,17 @@
  * Shared layout for all auth pages: login, set-password, change-password.
  * Centered card on a branded gradient background.
  */
+import type { Metadata } from 'next'
+
+import { ZeavarWordmark } from '@/components/brand/zeavar-mark'
 import { ThemeToggle } from '@/components/theme-toggle'
+
+export const metadata: Metadata = {
+  title: 'Account',
+  description:
+    'Secure sign-in and password management for ZEAVAR Pharma Training LMS — GxP-compliant pharma training.',
+  robots: { index: false, follow: false },
+}
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,16 +37,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <div className="relative w-full max-w-md animate-fade-up motion-reduce:animate-none">
         {/* Brand mark */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <span className="glow-ring flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-[hsl(243,75%,42%)] text-primary-foreground font-black text-sm shadow-soft-md">
-              Kx
-            </span>
-            <span className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Klonix
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">Pharma Training LMS</p>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <ZeavarWordmark size="auth" className="max-w-full" />
+          <p className="mt-3 text-sm text-muted-foreground">Pharma Training LMS</p>
         </div>
         {children}
       </div>

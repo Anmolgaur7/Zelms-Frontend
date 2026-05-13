@@ -30,7 +30,7 @@ export async function SiteHeader({ session }: { session: SessionUser }) {
         />
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">
-            {session.companyName ?? 'Klonix Pharma LMS'}
+            {session.companyName ?? 'ZEAVAR Pharma Training LMS'}
           </span>
           {session.employeeId && (
             <span className="hidden text-xs text-muted-foreground sm:inline">

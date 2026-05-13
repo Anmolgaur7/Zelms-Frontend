@@ -23,7 +23,6 @@ import {
   StampIcon,
   SettingsIcon,
   HelpCircleIcon,
-  FlaskConicalIcon,
   BookOpenIcon,
   AwardIcon,
   ActivityIcon,
@@ -31,6 +30,7 @@ import {
   TargetIcon,
 } from 'lucide-react'
 
+import { ZeavarWheel } from '@/components/brand/zeavar-mark'
 import { NavUser } from '@/components/nav-user'
 import {
   Sidebar,
@@ -176,39 +176,31 @@ export function AppSidebar({
     )?.url ?? null
 
   const displayName = companyName ?? session.companyName ?? 'Pharma LMS'
+  const homeHref = session.role === 'EMPLOYEE' ? '/my-trainings' : '/dashboard'
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      {/* ── Header / Brand ─────────────────────────────────────────────── */}
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-11 data-[slot=sidebar-menu-button]:!p-1.5">
-              <Link href="/dashboard" className="group/brand">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoUrl}
-                    alt={`${displayName} logo`}
-                    className="h-8 w-8 rounded-md object-contain shrink-0 bg-muted transition-transform duration-300 group-hover/brand:scale-105"
-                  />
-                ) : (
-                  <div className="relative flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-xs font-black shrink-0 shadow-soft transition-transform duration-300 group-hover/brand:scale-105">
-                    {displayName.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div className="grid flex-1 text-left">
-                  <span className="text-sm font-semibold leading-tight">
-                    {displayName}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">
-                    Pharma LMS
-                  </span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      {/* ── Header: company logo only (no name) ───────────────────────── */}
+      <SidebarHeader className="border-b border-sidebar-border">
+        <Link
+          href={homeHref}
+          className="flex justify-center rounded-md px-2 py-3 outline-none ring-sidebar-ring transition-transform duration-300 hover:scale-[1.02] focus-visible:ring-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2"
+        >
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt={`${displayName} logo`}
+              className="h-10 max-h-11 w-auto max-w-[min(100%,200px)] object-contain group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:max-w-8"
+            />
+          ) : (
+            <ZeavarWheel
+              alt={`${displayName} logo`}
+              animate
+              className="h-11 w-11 shrink-0 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8"
+            />
+          )}
+        </Link>
       </SidebarHeader>
 
       {/* ── Main nav ───────────────────────────────────────────────────── */}
@@ -278,6 +270,9 @@ export function AppSidebar({
 
       {/* ── Footer / User ──────────────────────────────────────────────── */}
       <SidebarFooter>
+        <p className="px-2 text-center text-[10px] font-medium lowercase leading-snug tracking-wide text-muted-foreground">
+          powered by zeavar
+        </p>
         <NavUser session={session} />
       </SidebarFooter>
     </Sidebar>
