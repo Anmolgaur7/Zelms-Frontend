@@ -45,6 +45,7 @@ function StatCard({
   icon: Icon,
   trend,
   trendLabel,
+  index = 0,
 }: {
   title: string
   value: string | number
@@ -52,17 +53,21 @@ function StatCard({
   icon: React.ElementType
   trend?: 'up' | 'down' | 'neutral'
   trendLabel?: string
+  index?: number
 }) {
   return (
-    <Card>
+    <Card
+      className="card-hover animate-fade-up motion-reduce:animate-none"
+      style={{ animationDelay: `${Math.min(index, 11) * 60}ms` }}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 hover:scale-105">
           <Icon className="h-4 w-4 text-primary" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
         <div className="flex items-center gap-1 mt-1">
           <p className="text-xs text-muted-foreground">{description}</p>
           {trendLabel && (
@@ -70,9 +75,9 @@ function StatCard({
               variant="outline"
               className={`h-4 text-[10px] px-1 ml-auto ${
                 trend === 'up'
-                  ? 'text-green-600 border-green-200'
+                  ? 'text-emerald-600 border-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900'
                   : trend === 'down'
-                  ? 'text-red-500 border-red-200'
+                  ? 'text-rose-600 border-rose-200 bg-rose-50/60 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900'
                   : ''
               }`}
             >
@@ -157,6 +162,7 @@ async function DashboardStats() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          index={0}
           title="Total Users"
           value={fmtNum(totalUsers)}
           description="All active accounts"
@@ -165,18 +171,21 @@ async function DashboardStats() {
           trendLabel={`${fmtNum(employees)} employees`}
         />
         <StatCard
+          index={1}
           title="Administrators"
           value={fmtNum(admins)}
           description="Admin & Super Admin"
           icon={ShieldCheckIcon}
         />
         <StatCard
+          index={2}
           title="Trainers"
           value={fmtNum(trainers)}
           description="SOP training staff"
           icon={FileTextIcon}
         />
         <StatCard
+          index={3}
           title="Pending Assignments"
           value={fmtNum(pending)}
           description={
@@ -198,24 +207,28 @@ async function DashboardStats() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          index={4}
           title="Completion Rate"
           value={fmtPct(completionRate)}
           description="Across all assignments"
           icon={ActivityIcon}
         />
         <StatCard
+          index={5}
           title="Average Quiz Score"
           value={fmtPct(stats?.averageScore)}
           description="Latest attempts"
           icon={TrendingUpIcon}
         />
         <StatCard
+          index={6}
           title="Locked-out Trainees"
           value={fmtNum(stats?.lockedOut)}
           description="Awaiting unlock"
           icon={AlertTriangleIcon}
         />
         <StatCard
+          index={7}
           title="Active SOPs"
           value={fmtNum(stats?.activeSops)}
           description={
@@ -237,12 +250,12 @@ export default async function DashboardPage() {
   return (
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Page heading */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
+      <div className="animate-fade-up motion-reduce:animate-none">
+        <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
           Welcome back, {session?.name?.split(' ')[0]}
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Here&apos;s an overview of your pharma training operations
+        <p className="text-sm text-muted-foreground mt-1">
+          Here&apos;s an overview of your pharma training operations.
         </p>
       </div>
 
@@ -252,15 +265,15 @@ export default async function DashboardPage() {
       </Suspense>
 
       {/* Quick actions */}
-      <div>
+      <div className="animate-fade-up motion-reduce:animate-none" style={{ animationDelay: '180ms' }}>
         <h2 className="text-base font-semibold mb-3">Quick Actions</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN') && (
             <>
               <CreateUserModal
                 trigger={
-                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors w-full">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md w-full">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                       <UsersIcon className="h-4 w-4 text-primary" />
                     </div>
                     <div>
@@ -273,8 +286,8 @@ export default async function DashboardPage() {
 
               <CreateDepartmentModal
                 trigger={
-                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors w-full">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md w-full">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                       <Building2Icon className="h-4 w-4 text-primary" />
                     </div>
                     <div>
@@ -291,8 +304,8 @@ export default async function DashboardPage() {
             <>
               <CreateSOPModal
                 trigger={
-                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors w-full">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md w-full">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                       <FileTextIcon className="h-4 w-4 text-primary" />
                     </div>
                     <div>
@@ -305,8 +318,8 @@ export default async function DashboardPage() {
 
               <CreateAssignmentModal
                 trigger={
-                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors w-full">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <button className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md w-full">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                       <ClipboardCheckIcon className="h-4 w-4 text-primary" />
                     </div>
                     <div>
@@ -322,9 +335,9 @@ export default async function DashboardPage() {
           {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN' || session.role === 'AUDITOR') && (
             <a
               href="/dashboard/audit"
-              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors w-full"
+              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md w-full"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                 <ShieldCheckIcon className="h-4 w-4 text-primary" />
               </div>
               <div>
@@ -341,14 +354,14 @@ export default async function DashboardPage() {
         session.role === 'SUPER_ADMIN' ||
         session.role === 'TRAINER' ||
         session.role === 'AUDITOR') && (
-        <div>
+        <div className="animate-fade-up motion-reduce:animate-none" style={{ animationDelay: '260ms' }}>
           <h2 className="text-base font-semibold mb-3">Analytics</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Link
               href="/dashboard/analytics/compliance"
-              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                 <ActivityIcon className="h-4 w-4 text-primary" />
               </div>
               <div>
@@ -361,9 +374,9 @@ export default async function DashboardPage() {
 
             <Link
               href="/dashboard/analytics/risk"
-              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+              className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                 <AlertTriangleIcon className="h-4 w-4 text-primary" />
               </div>
               <div>
@@ -379,9 +392,9 @@ export default async function DashboardPage() {
               session.role === 'TRAINER') && (
               <Link
                 href="/dashboard/analytics/sop-difficulty"
-                className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 hover:bg-accent/50 hover:border-primary/30 transition-colors"
+                className="group flex items-start text-left gap-3 rounded-lg border bg-card p-4 transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:bg-accent/40 hover:border-primary/30 hover:shadow-soft-md"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15 transition-transform duration-200 group-hover:scale-105">
                   <TargetIcon className="h-4 w-4 text-primary" />
                 </div>
                 <div>

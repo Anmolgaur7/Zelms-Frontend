@@ -8,20 +8,33 @@ import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-primary/5 p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-auth-shell p-4 overflow-hidden">
+      {/* Decorative floating blobs — pure CSS, ignored by screen readers. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 -left-32 h-80 w-80 rounded-full bg-primary/20 blur-3xl opacity-70 motion-safe:animate-pulse-soft"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-40 -right-32 h-96 w-96 rounded-full bg-[hsl(199,89%,60%)]/15 blur-3xl motion-safe:animate-pulse-soft"
+        style={{ animationDelay: '1.2s' }}
+      />
+
       {/* Theme toggle in the top-right corner */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="relative w-full max-w-md animate-fade-up motion-reduce:animate-none">
         {/* Brand mark */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-black text-sm">
+            <span className="glow-ring flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-[hsl(243,75%,42%)] text-primary-foreground font-black text-sm shadow-soft-md">
               Kx
             </span>
-            <span>Klonix</span>
+            <span className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Klonix
+            </span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Pharma Training LMS</p>
         </div>

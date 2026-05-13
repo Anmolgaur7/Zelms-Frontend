@@ -107,28 +107,34 @@ interface KpiCardProps {
   icon: React.ElementType
   tone?: 'default' | 'good' | 'warn' | 'bad'
   subline?: string
+  index?: number
 }
 
-function KpiCard({ title, value, icon: Icon, tone = 'default', subline }: KpiCardProps) {
-  const toneClass =
-    tone === 'good'
-      ? 'text-emerald-600'
-      : tone === 'warn'
-      ? 'text-amber-600'
-      : tone === 'bad'
-      ? 'text-rose-600'
-      : 'text-muted-foreground'
+function KpiCard({ title, value, icon: Icon, tone = 'default', subline, index = 0 }: KpiCardProps) {
+  const toneClasses: Record<NonNullable<KpiCardProps['tone']>, string> = {
+    default: 'text-muted-foreground from-muted/80 to-muted/40 ring-border/60',
+    good: 'text-emerald-600 from-emerald-500/15 to-emerald-500/5 ring-emerald-500/20 dark:text-emerald-400',
+    warn: 'text-amber-600 from-amber-500/15 to-amber-500/5 ring-amber-500/20 dark:text-amber-400',
+    bad: 'text-rose-600 from-rose-500/15 to-rose-500/5 ring-rose-500/20 dark:text-rose-400',
+  }
   return (
-    <Card>
+    <Card
+      className="card-hover animate-fade-up motion-reduce:animate-none"
+      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+    >
       <CardContent className="flex items-start gap-3 p-4">
-        <div className={`mt-0.5 rounded-md bg-muted/60 p-2 ${toneClass}`}>
+        <div
+          className={`mt-0.5 rounded-md bg-gradient-to-br p-2 ring-1 ring-inset transition-transform duration-200 hover:scale-105 ${toneClasses[tone]}`}
+        >
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             {title}
           </p>
-          <p className="text-2xl font-semibold leading-tight">{value}</p>
+          <p className="text-2xl font-semibold leading-tight tracking-tight">
+            {value}
+          </p>
           {subline && (
             <p className="mt-0.5 text-xs text-muted-foreground">{subline}</p>
           )}
@@ -153,12 +159,14 @@ function KpiRow({ stats }: { stats: CompanyAssignmentStats }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <KpiCard
+        index={0}
         title="Total assignments"
         value={stats.totalAssignments ?? 0}
         icon={ClipboardCheckIcon}
         subline={`${stats.traineesWithAssignments ?? 0} trainee(s)`}
       />
       <KpiCard
+        index={1}
         title="Completed"
         value={completed}
         icon={CheckCircle2Icon}
@@ -170,18 +178,21 @@ function KpiRow({ stats }: { stats: CompanyAssignmentStats }) {
         }
       />
       <KpiCard
+        index={2}
         title="Avg pass score"
         value={avg}
         icon={TrendingUpIcon}
         tone="good"
       />
       <KpiCard
+        index={3}
         title="Overdue (pending)"
         value={overdue}
         icon={ClockIcon}
         tone="warn"
       />
       <KpiCard
+        index={4}
         title="Locked out"
         value={lockouts}
         icon={LockIcon}
@@ -216,12 +227,12 @@ export default async function AssignmentsPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 animate-fade-up motion-reduce:animate-none">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
             Training Assignments
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             {typeof list.total === 'number'
               ? `${list.total.toLocaleString()} total assignment${list.total === 1 ? '' : 's'}`
               : `${assignments.length} on this page`}

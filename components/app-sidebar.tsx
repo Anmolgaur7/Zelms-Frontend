@@ -1,12 +1,18 @@
+'use client'
+
 /**
  * components/app-sidebar.tsx
  *
- * Server component — reads the session and renders role-filtered nav.
- * Roles in this app: SUPER_ADMIN, ADMIN, TRAINER, EMPLOYEE, AUDITOR
+ * Client component — uses pathname to highlight the active nav item and
+ * apply a smooth pill transition. Role filtering still happens here using
+ * the session passed from the server layout.
+ *
+ * Roles: SUPER_ADMIN, ADMIN, TRAINER, EMPLOYEE, AUDITOR
  */
 
 import * as React from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboardIcon,
   UsersIcon,
@@ -151,9 +157,23 @@ export function AppSidebar({
   companyName?: string | null
   logoUrl?: string | null
 }) {
+  const pathname = usePathname() ?? ''
+
   const filteredNav = NAV_ITEMS.filter(
     (item) => item.roles.length === 0 || item.roles.includes(session.role),
   )
+
+  // A nav item is "active" when the pathname starts with its url.
+  // Longer urls win (so /dashboard/audit/signatures beats /dashboard/audit).
+  const sortedByDepth = [...filteredNav].sort(
+    (a, b) => b.url.length - a.url.length,
+  )
+  const activeUrl =
+    sortedByDepth.find((item) =>
+      item.url === '/dashboard'
+        ? pathname === '/dashboard'
+        : pathname === item.url || pathname.startsWith(`${item.url}/`),
+    )?.url ?? null
 
   const displayName = companyName ?? session.companyName ?? 'Pharma LMS'
 
@@ -163,17 +183,17 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-10 data-[slot=sidebar-menu-button]:!p-1.5">
-              <Link href="/dashboard">
+            <SidebarMenuButton asChild className="h-11 data-[slot=sidebar-menu-button]:!p-1.5">
+              <Link href="/dashboard" className="group/brand">
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logoUrl}
                     alt={`${displayName} logo`}
-                    className="h-7 w-7 rounded-md object-contain shrink-0 bg-muted"
+                    className="h-8 w-8 rounded-md object-contain shrink-0 bg-muted transition-transform duration-300 group-hover/brand:scale-105"
                   />
                 ) : (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-black shrink-0">
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-xs font-black shrink-0 shadow-soft transition-transform duration-300 group-hover/brand:scale-105">
                     {displayName.slice(0, 2).toUpperCase()}
                   </div>
                 )}
@@ -196,16 +216,44 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarMenu>
-            {filteredNav.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.url}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {filteredNav.map((item) => {
+              const isActive = item.url === activeUrl
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={item.title}
+                    className="group/nav relative transition-colors duration-150"
+                  >
+                    <Link href={item.url}>
+                      {isActive && (
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
+                        />
+                      )}
+                      <item.icon
+                        className={
+                          isActive
+                            ? 'h-4 w-4 text-primary'
+                            : 'h-4 w-4 transition-transform duration-200 group-hover/nav:scale-110 group-hover/nav:text-primary'
+                        }
+                      />
+                      <span
+                        className={
+                          isActive
+                            ? 'text-sidebar-accent-foreground'
+                            : 'transition-colors duration-150'
+                        }
+                      >
+                        {item.title}
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
           </SidebarMenu>
         </SidebarGroup>
 

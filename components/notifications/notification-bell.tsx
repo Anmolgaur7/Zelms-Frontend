@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { toastActionError } from '@/lib/toast-action-error'
 import { LiveDot } from '@/components/ui/live-dot'
 import {
@@ -207,14 +208,26 @@ export function NotificationBell({ initial }: Props) {
           }
           className="relative"
         >
-          <BellIcon className="h-4 w-4" />
+          <BellIcon
+            className={
+              unreadCount > 0
+                ? 'h-4 w-4 text-primary'
+                : 'h-4 w-4'
+            }
+          />
           {unreadCount > 0 && (
-            <span
-              aria-hidden
-              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white shadow-sm"
-            >
-              {displayBadge}
-            </span>
+            <>
+              <span
+                aria-hidden
+                className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-600 px-1 text-[10px] font-semibold text-white shadow-soft motion-safe:animate-fade-in"
+              >
+                {displayBadge}
+              </span>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-rose-400/60 motion-safe:animate-ping"
+              />
+            </>
           )}
         </Button>
       </PopoverTrigger>
@@ -223,7 +236,7 @@ export function NotificationBell({ initial }: Props) {
         align="end"
         side="bottom"
         sideOffset={6}
-        className="w-[360px] p-0"
+        className="w-[360px] p-0 shadow-soft-lg border-border/70 overflow-hidden"
       >
         <div className="flex items-center justify-between gap-2 px-4 py-3">
           <div className="flex flex-col">
@@ -271,14 +284,14 @@ export function NotificationBell({ initial }: Props) {
         ) : (
           <ScrollArea className="max-h-[420px]">
             <ul className="divide-y">
-              {sorted.map((n) => {
+              {sorted.map((n, idx) => {
                 const { title, body } = summarise(n)
                 const unread = isUnread(n)
                 const link = deepLink(n)
                 const Inner = (
                   <div
-                    className={`flex flex-col gap-0.5 border-l-2 px-4 py-3 transition-colors hover:bg-muted/50 ${severityClass(n)} ${
-                      unread ? 'bg-primary/[0.04]' : 'opacity-80'
+                    className={`flex flex-col gap-0.5 border-l-2 px-4 py-3 transition-colors hover:bg-accent/50 ${severityClass(n)} ${
+                      unread ? 'bg-primary/[0.05]' : 'opacity-80'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -295,13 +308,17 @@ export function NotificationBell({ initial }: Props) {
                       </p>
                     )}
                     {unread && (
-                      <span className="mt-1 inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
+                      <span className="mt-1 inline-flex h-1.5 w-1.5 rounded-full bg-rose-500 motion-safe:animate-pulse-soft" />
                     )}
                   </div>
                 )
 
                 return (
-                  <li key={n.id}>
+                  <li
+                    key={n.id}
+                    className="motion-safe:animate-fade-in"
+                    style={{ animationDelay: `${Math.min(idx, 8) * 30}ms` }}
+                  >
                     {link ? (
                       <Link
                         href={link}

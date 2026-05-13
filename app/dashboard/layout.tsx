@@ -39,9 +39,12 @@ export default async function DashboardLayout({
         logoUrl={company?.logoDisplayUrl ?? null}
         variant="inset"
       />
-      <SidebarInset>
+      <SidebarInset className="bg-app-shell">
         <SiteHeader session={session} />
-        <div className="flex flex-1 flex-col">
+        <div
+          key={session.id}
+          className="flex flex-1 flex-col animate-fade-up motion-reduce:animate-none"
+        >
           {children}
         </div>
       </SidebarInset>

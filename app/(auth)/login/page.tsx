@@ -57,7 +57,7 @@ export default function LoginPage() {
 
 function LoginSkeleton() {
   return (
-    <Card className="shadow-lg border-border/50">
+    <Card className="shadow-soft-lg border-border/50 backdrop-blur-sm bg-card/95">
       <CardHeader className="space-y-1 pb-4">
         <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>Loading…</CardDescription>
@@ -108,11 +108,11 @@ function LoginForm() {
   }
 
   return (
-    <Card className="shadow-lg border-border/50">
+    <Card className="shadow-soft-lg border-border/50 backdrop-blur-sm bg-card/95">
       <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardTitle className="text-xl">Welcome back</CardTitle>
         <CardDescription>
-          Enter your company code and employee credentials
+          Sign in with your company code and employee credentials.
         </CardDescription>
       </CardHeader>
 
@@ -122,7 +122,7 @@ function LoginForm() {
           {serverError && (
             <div
               role="alert"
-              className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive"
+              className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive animate-fade-up motion-reduce:animate-none"
             >
               {serverError}
             </div>

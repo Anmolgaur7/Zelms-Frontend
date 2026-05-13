@@ -30,6 +30,7 @@ import type {
   AuditLogFeed,
   AuditLogVerification,
   CompanyLogoResponse,
+  Quiz,
 } from '@/types/admin'
 import type { UserRole } from '@/types/auth'
 
@@ -538,9 +539,26 @@ export async function getCompanyAssignmentsPageData(
   }
 }
 
-export async function getQuizzesBySOP(sopId: string): Promise<unknown[]> {
+/**
+ * Fetch the quizzes attached to an SOP. Backend can return either a bare
+ * array or `{ data | quizzes }` envelope; we unwrap both. Used by the
+ * "AI quiz preview" step on SOP upload and by the assignment modal.
+ *
+ * Returns an empty list on error — call sites that need to differentiate
+ * "no quizzes yet" from "request failed" should call `/sop/:id` themselves.
+ */
+export async function getQuizzesBySOP(sopId: string): Promise<Quiz[]> {
   try {
-    return await api.get<unknown[]>(`/api/quizzes/sop/${sopId}`)
+    const raw = await api.get<Quiz[] | { data?: Quiz[]; quizzes?: Quiz[] }>(
+      `/api/quizzes/sop/${sopId}`,
+    )
+    if (Array.isArray(raw)) return raw
+    if (raw && typeof raw === 'object') {
+      const env = raw as { data?: Quiz[]; quizzes?: Quiz[] }
+      if (Array.isArray(env.data)) return env.data
+      if (Array.isArray(env.quizzes)) return env.quizzes
+    }
+    return []
   } catch {
     return []
   }

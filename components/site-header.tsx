@@ -21,9 +21,9 @@ export async function SiteHeader({ session }: { session: SessionUser }) {
   const notifications = await getNotifications()
 
   return (
-    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
+    <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-[width,height,box-shadow] ease-linear">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
+        <SidebarTrigger className="-ml-1 transition-transform hover:scale-110" />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"

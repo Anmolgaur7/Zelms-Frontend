@@ -57,18 +57,18 @@ function rateBadge(rate: number | null) {
   const normalised = rate <= 1 ? rate * 100 : rate
   if (normalised >= 90)
     return (
-      <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+      <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15">
         {normalised.toFixed(0)}%
       </Badge>
     )
   if (normalised >= 70)
     return (
-      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+      <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15">
         {normalised.toFixed(0)}%
       </Badge>
     )
   return (
-    <Badge className="bg-red-500/10 text-red-600 border-red-500/20">
+    <Badge className="border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15">
       {normalised.toFixed(0)}%
     </Badge>
   )
@@ -101,12 +101,12 @@ export default async function CompliancePage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 animate-fade-up motion-reduce:animate-none">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
             Compliance report
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             Live training compliance across every department and SOP.
           </p>
         </div>
@@ -133,22 +133,26 @@ export default async function CompliancePage() {
       {/* KPI row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
+          index={0}
           title="Overall compliance"
           value={pctFmt(overall)}
           description="Across all assignments"
         />
         <KpiCard
+          index={1}
           title="Total assignments"
           value={(report?.totalAssignments ?? 0).toLocaleString()}
           description="In scope this period"
         />
         <KpiCard
+          index={2}
           title="Overdue"
           value={(report?.totalOverdue ?? 0).toLocaleString()}
           description="Past due date"
           accent="warn"
         />
         <KpiCard
+          index={3}
           title="Failed"
           value={(report?.totalFailed ?? 0).toLocaleString()}
           description="Quiz attempts failed"
@@ -157,10 +161,12 @@ export default async function CompliancePage() {
       </div>
 
       {/* Department chart */}
-      <Card>
+      <Card className="animate-fade-up motion-reduce:animate-none" style={{ animationDelay: '260ms' }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
-            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-inset ring-primary/15">
+              <ActivityIcon className="h-3.5 w-3.5 text-primary" />
+            </span>
             Compliance by department
           </CardTitle>
           <CardDescription>
@@ -174,7 +180,7 @@ export default async function CompliancePage() {
       </Card>
 
       {/* SOP table */}
-      <Card>
+      <Card className="animate-fade-up motion-reduce:animate-none" style={{ animationDelay: '320ms' }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium">
             Compliance by SOP
@@ -247,29 +253,36 @@ function KpiCard({
   value,
   description,
   accent,
+  index = 0,
 }: {
   title: string
   value: string
   description: string
   accent?: 'good' | 'warn' | 'bad'
+  index?: number
 }) {
   const accentClass =
     accent === 'good'
-      ? 'text-green-600'
+      ? 'text-emerald-600 dark:text-emerald-400'
       : accent === 'warn'
-        ? 'text-amber-600'
+        ? 'text-amber-600 dark:text-amber-400'
         : accent === 'bad'
-          ? 'text-red-600'
+          ? 'text-rose-600 dark:text-rose-400'
           : ''
   return (
-    <Card>
+    <Card
+      className="card-hover animate-fade-up motion-reduce:animate-none"
+      style={{ animationDelay: `${Math.min(index, 6) * 60}ms` }}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${accentClass}`}>{value}</div>
+        <div className={`text-2xl font-bold tracking-tight ${accentClass}`}>
+          {value}
+        </div>
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </CardContent>
     </Card>
