@@ -1,0 +1,55 @@
+# Files / folders the Docker build context should never copy.
+# Anything reproducible from source (build output, node_modules, caches) goes
+# here so the build context stays small and `COPY . .` doesn't leak host state.
+
+# Dependencies — reinstalled inside the `deps` stage.
+node_modules
+.pnpm-store
+
+# Next.js build artefacts — produced by the `builder` stage.
+.next
+out
+build
+
+# Local env files — never bake secrets into the image. Pass them at runtime
+# (docker run -e, compose `environment:`, or an orchestrator secret store).
+.env
+.env.*
+!.env.example
+
+# Source-control & editor noise.
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs & coverage.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+coverage
+
+# TypeScript incremental cache.
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker files themselves — no need to copy them back into the image.
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Misc / platform-specific.
+.vercel
+.turbo
+.cache
+.terminals
+terminals
+
+# Local-only helper scripts that aren't shipped.
+scratch

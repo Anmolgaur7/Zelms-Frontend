@@ -14,6 +14,7 @@ import {
   FileTextIcon,
   ClipboardCheckIcon,
   ShieldCheckIcon,
+  StampIcon,
   SettingsIcon,
   HelpCircleIcon,
   FlaskConicalIcon,
@@ -82,6 +83,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
   },
   {
+    title: 'E-Signatures',
+    url: '/dashboard/audit/signatures',
+    icon: StampIcon,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+  },
+  {
     title: 'Company Settings',
     url: '/dashboard/company',
     icon: SettingsIcon,
@@ -114,11 +121,19 @@ const SECONDARY_ITEMS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 export function AppSidebar({
   session,
+  companyName,
+  logoUrl,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { session: SessionUser }) {
+}: React.ComponentProps<typeof Sidebar> & {
+  session: SessionUser
+  companyName?: string | null
+  logoUrl?: string | null
+}) {
   const filteredNav = NAV_ITEMS.filter(
     (item) => item.roles.length === 0 || item.roles.includes(session.role),
   )
+
+  const displayName = companyName ?? session.companyName ?? 'Pharma LMS'
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -128,13 +143,24 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-10 data-[slot=sidebar-menu-button]:!p-1.5">
               <Link href="/dashboard">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-black shrink-0">
-                  Kx
-                </div>
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt={`${displayName} logo`}
+                    className="h-7 w-7 rounded-md object-contain shrink-0 bg-muted"
+                  />
+                ) : (
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-black shrink-0">
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div className="grid flex-1 text-left">
-                  <span className="text-sm font-semibold leading-tight">Klonix</span>
+                  <span className="text-sm font-semibold leading-tight">
+                    {displayName}
+                  </span>
                   <span className="text-[10px] text-muted-foreground leading-tight">
-                    {session.companyName ?? 'Pharma LMS'}
+                    Pharma LMS
                   </span>
                 </div>
               </Link>

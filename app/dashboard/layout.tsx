@@ -8,6 +8,7 @@
 
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
+import { getCompany } from '@/lib/actions/admin'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SiteHeader } from '@/components/site-header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -26,9 +27,18 @@ export default async function DashboardLayout({
   // Extra safety net (middleware should catch this first)
   if (!session) redirect('/login')
 
+  // Fetch tenant branding in parallel — null-safe so the sidebar still renders
+  // for roles that can't reach /api/admin/company (e.g. EMPLOYEE).
+  const company = await getCompany()
+
   return (
     <SidebarProvider>
-      <AppSidebar session={session} variant="inset" />
+      <AppSidebar
+        session={session}
+        companyName={company?.name ?? session.companyName ?? null}
+        logoUrl={company?.logoDisplayUrl ?? null}
+        variant="inset"
+      />
       <SidebarInset>
         <SiteHeader session={session} />
         <div className="flex flex-1 flex-col">

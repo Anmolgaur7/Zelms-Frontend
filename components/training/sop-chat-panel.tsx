@@ -12,6 +12,7 @@ import {
   AlertCircleIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { MarkdownView } from './markdown-view'
 
 interface ChatMessage {
   id: string
@@ -181,8 +182,8 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
         <SparklesIcon className="h-3.5 w-3.5 text-primary" />
       </div>
-      <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-background border px-4 py-2 text-sm whitespace-pre-line">
-        {message.content}
+      <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-background border px-4 py-2 text-sm">
+        <MarkdownView variant="compact">{message.content}</MarkdownView>
       </div>
     </div>
   )

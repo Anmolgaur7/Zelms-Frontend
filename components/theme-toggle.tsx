@@ -5,8 +5,8 @@
  *
  * Light / Dark / System theme switcher. Wraps `next-themes`.
  *
- *   <ThemeToggle />              → icon button with dropdown (default)
- *   <ThemeToggle variant="switch" /> → simple single-click toggle (sun ↔ moon)
+ *   <ThemeToggle />                 → one-click toggle (sun ↔ moon) — default
+ *   <ThemeToggle variant="dropdown" /> → 3-way Light / Dark / System menu
  */
 
 import * as React from 'react'
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 interface ThemeToggleProps {
-  /** `dropdown` (default) shows a 3-way menu; `switch` is a one-click toggle. */
+  /** `switch` (default) is a one-click toggle; `dropdown` shows a 3-way menu. */
   variant?: 'dropdown' | 'switch'
   /** Icon button size — passed to <Button>. */
   size?: 'sm' | 'default' | 'lg' | 'icon'
@@ -30,7 +30,7 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({
-  variant = 'dropdown',
+  variant = 'switch',
   size = 'icon',
   className,
 }: ThemeToggleProps) {
@@ -54,7 +54,7 @@ export function ThemeToggle({
     )
   }
 
-  // ── Simple single-click toggle ──────────────────────────────────────────────
+  // ── Simple single-click toggle (default) ───────────────────────────────────
   if (variant === 'switch') {
     const isDark = resolvedTheme === 'dark'
     return (
@@ -63,6 +63,7 @@ export function ThemeToggle({
         size={size}
         className={className}
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
       >
         {isDark ? (
@@ -74,7 +75,7 @@ export function ThemeToggle({
     )
   }
 
-  // ── Dropdown with Light / Dark / System ─────────────────────────────────────
+  // ── Dropdown with Light / Dark / System (opt-in) ───────────────────────────
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

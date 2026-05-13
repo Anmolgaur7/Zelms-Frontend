@@ -7,7 +7,7 @@
 
 import Link from 'next/link'
 import { getUsers } from '@/lib/actions/admin'
-import { Badge } from '@/components/ui/badge'
+import { getSession } from '@/lib/session'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -24,8 +24,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { PlusIcon, UsersIcon, UploadIcon } from 'lucide-react'
+import { PlusIcon, UsersIcon, UploadIcon, ShieldCheckIcon } from 'lucide-react'
 import { CreateUserModal } from '@/components/modals/create-user-modal'
+import { UserRoleDialog } from '@/components/admin/user-role-dialog'
 
 export const metadata = { title: 'Users' }
 
@@ -47,7 +48,10 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default async function UsersPage() {
-  const users = await getUsers()
+  const [users, session] = await Promise.all([getUsers(), getSession()])
+  const actorRole = session?.role ?? 'ADMIN'
+  const actorEmployeeId = session?.employeeId ?? null
+  const isActorSuperAdmin = actorRole === 'SUPER_ADMIN'
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -110,15 +114,28 @@ export default async function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-mono text-sm">
-                      {user.employeeId}
+                      <Link
+                        href={`/dashboard/users/${user.id}`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {user.employeeId}
+                      </Link>
                     </TableCell>
-                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/dashboard/users/${user.id}`}
+                        className="hover:text-primary hover:underline"
+                      >
+                        {user.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
@@ -133,6 +150,60 @@ export default async function UsersPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {user.department?.name ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(() => {
+                        const isSelf =
+                          actorEmployeeId !== null &&
+                          user.employeeId === actorEmployeeId
+                        const isProtected =
+                          user.role === 'SUPER_ADMIN' && !isActorSuperAdmin
+
+                        if (isSelf) {
+                          return (
+                            <span
+                              className="text-[11px] text-muted-foreground"
+                              title="You cannot change your own role"
+                            >
+                              You
+                            </span>
+                          )
+                        }
+                        if (isProtected) {
+                          return (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 cursor-not-allowed opacity-40"
+                              disabled
+                              aria-label="Only a Super Admin can change this role"
+                              title="Only a Super Admin can change this account"
+                            >
+                              <ShieldCheckIcon className="h-4 w-4" />
+                            </Button>
+                          )
+                        }
+                        return (
+                          <UserRoleDialog
+                            userId={user.id}
+                            userName={user.name}
+                            currentRole={user.role}
+                            actorRole={actorRole}
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Change role"
+                              >
+                                <ShieldCheckIcon className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
+                        )
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}

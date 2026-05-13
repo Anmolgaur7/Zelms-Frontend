@@ -1,0 +1,34 @@
+# docker-compose.yml
+#
+# Local + simple-prod orchestration for the Zelms frontend.
+#
+# Usage:
+#   cp .env.example .env           # adjust NEXT_PUBLIC_API_URL as needed
+#   docker compose up --build      # builds the image, starts on :3000
+#   docker compose down            # stop + remove the container
+#
+# The NEXT_PUBLIC_API_URL value is passed as a build arg AND as a runtime
+# environment variable, because Next.js inlines NEXT_PUBLIC_* at build time
+# but runtime env is still helpful for server-only code paths.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://klonixpharback.onrender.com}
+    image: zelms-frontend:latest
+    container_name: zelms-frontend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://klonixpharback.onrender.com}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

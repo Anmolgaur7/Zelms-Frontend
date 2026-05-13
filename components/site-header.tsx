@@ -1,9 +1,25 @@
+/**
+ * components/site-header.tsx
+ *
+ * Server component — fetches the notification snapshot in parallel with the
+ * session so the bell hydrates with real data on first paint. The header
+ * itself stays light: only client-side things (theme toggle, bell popover)
+ * mount on the client.
+ */
+
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { NotificationBell } from '@/components/notifications/notification-bell'
+import { getNotifications } from '@/lib/actions/notifications'
 import type { SessionUser } from '@/types/auth'
 
-export function SiteHeader({ session }: { session: SessionUser }) {
+export async function SiteHeader({ session }: { session: SessionUser }) {
+  // `getNotifications` is fully tolerant — it returns an envelope with an
+  // error string instead of throwing — so the header keeps rendering even if
+  // the notifications endpoint is unhappy.
+  const notifications = await getNotifications()
+
   return (
     <header className="group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
@@ -24,6 +40,7 @@ export function SiteHeader({ session }: { session: SessionUser }) {
         </div>
 
         <div className="ml-auto flex items-center gap-1">
+          <NotificationBell initial={notifications} />
           <ThemeToggle />
         </div>
       </div>

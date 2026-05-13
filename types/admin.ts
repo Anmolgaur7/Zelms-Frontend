@@ -74,6 +74,16 @@ export interface BulkCreateResponse {
 }
 
 // ─── SOP ──────────────────────────────────────────────────────────────────────
+export type SopStatus = 'DRAFT' | 'UNDER_REVIEW' | 'ACTIVE' | 'ARCHIVED'
+
+/** Status values that the e-sign status-change endpoint accepts. */
+export const SOP_STATUS_VALUES: SopStatus[] = [
+  'DRAFT',
+  'UNDER_REVIEW',
+  'ACTIVE',
+  'ARCHIVED',
+]
+
 export interface SOP {
   id: string
   title: string
@@ -84,7 +94,9 @@ export interface SOP {
   /** Short-lived signed URL (≈600 s) for opening the PDF in the browser. */
   sopDisplayUrl?: string | null
   sopSignedUrlExpiresInSeconds?: number | null
-  status?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
+  status?: SopStatus
+  /** When this row is a clone of another SOP (created via `POST /:id/revise`). */
+  parentSopId?: string | null
   createdAt: string
   updatedAt?: string
 }
@@ -136,25 +148,38 @@ export interface QuizSubmitResponse {
 }
 
 // ─── Assignment ───────────────────────────────────────────────────────────────
+export type AssignmentStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'OVERDUE'
+  | 'LOCKED_OUT'
+
 export interface Assignment {
   id: string
   userId: string
   sopId?: string
   quizId?: string
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'OVERDUE'
+  status: AssignmentStatus
   dueDate?: string | null
   deadline?: string | null
   completedAt?: string | null
   score?: number | null
+  passed?: boolean | null
   attempts?: number
-  user?: Pick<AdminUser, 'name' | 'employeeId'>
+  user?: Pick<AdminUser, 'name' | 'employeeId'> & { id?: string; email?: string | null }
   sop?: Pick<SOP, 'id' | 'title' | 'version' | 'fileUrl' | 'sopDisplayUrl'>
   quiz?: {
     id: string
+    difficulty?: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED'
     sop?: Pick<SOP, 'id' | 'title' | 'version' | 'fileUrl' | 'sopDisplayUrl'>
     questions?: QuizQuestion[]
   }
+  /** Resolved signed URL for the SOP PDF (populated by `/api/assignments/company`). */
+  sopDisplayUrl?: string | null
   createdAt: string
+  updatedAt?: string
 }
 
 // ─── Pagination (common list wrapper) ────────────────────────────────────────
@@ -162,5 +187,130 @@ export interface PaginatedList<T> {
   data: T[]
   total: number
   page: number
-  pageSize: number
+  /** Backend uses `limit`; some legacy callers still expect `pageSize`. */
+  limit?: number
+  pageSize?: number
+}
+
+// ─── Company assignment endpoints (tenant-only) ──────────────────────────────
+export interface CompanyAssignmentStatsByStatus {
+  PENDING?: number
+  IN_PROGRESS?: number
+  COMPLETED?: number
+  FAILED?: number
+  OVERDUE?: number
+  LOCKED_OUT?: number
+  /** Backend may add more keys we haven't typed yet. */
+  [key: string]: number | undefined
+}
+
+export interface CompanyAssignmentStats {
+  totalAssignments: number
+  byStatus: CompanyAssignmentStatsByStatus
+  /** Convenience aliases that some backends include. */
+  passed?: number
+  failed?: number
+  averageScore?: number | null
+  overduePending?: number
+  lockouts?: number
+  traineesWithAssignments: number
+}
+
+export interface AssignmentListQuery {
+  page?: number
+  limit?: number
+  userId?: string
+  assignmentId?: string
+  status?: AssignmentStatus
+  quizId?: string
+  sopId?: string
+  /** Trainee name contains (case-insensitive). */
+  search?: string
+  overdueOnly?: boolean
+}
+
+export type CompanyAssignmentList = PaginatedList<Assignment>
+
+export interface TraineeProfile {
+  id: string
+  name: string
+  employeeId: string
+  email?: string | null
+  role?: UserRole | string
+  departmentId?: string | null
+  department?: { id: string; name: string } | null
+  isActive?: boolean
+}
+
+export interface TraineeSummary {
+  byStatus: CompanyAssignmentStatsByStatus
+  totalAssignments?: number
+  passed?: number
+  failed?: number
+  averageScore?: number | null
+  lastCompletedAt?: string | null
+}
+
+export interface TraineeDossier {
+  trainee: TraineeProfile
+  summary: TraineeSummary
+  assignments: PaginatedList<Assignment>
+}
+
+// ─── Audit logs ──────────────────────────────────────────────────────────────
+export interface AuditLogActor {
+  id?: string
+  name?: string | null
+  employeeId?: string | null
+  role?: string | null
+  email?: string | null
+}
+
+export interface AuditLogEntry {
+  id: string
+  /** Stable event code, e.g. USER_CREATED, SOP_STATUS_CHANGED, ASSIGNMENT_SUBMITTED */
+  action: string
+  /** Entity affected by the event (e.g. "SOP", "User") */
+  targetType?: string | null
+  targetId?: string | null
+  /** Human-readable reason captured at action time. */
+  reason?: string | null
+  /** Actor (admin/trainer/employee who performed the action). */
+  user?: AuditLogActor | null
+  actor?: AuditLogActor | null
+  /** Network context. */
+  ip?: string | null
+  userAgent?: string | null
+  /** Free-form payload — shape varies per event. */
+  metadata?: Record<string, unknown> | null
+  details?: Record<string, unknown> | null
+  /** Cryptographic chain links (when backend exposes them). */
+  hash?: string | null
+  previousHash?: string | null
+  createdAt: string
+}
+
+export interface AuditLogFeed {
+  logs: AuditLogEntry[]
+  page: number
+  limit: number
+  total?: number
+  hasMore?: boolean
+}
+
+export interface AuditLogVerification {
+  id: string
+  /** Server returns `true` when the chain hash matches stored value. */
+  valid: boolean
+  /** Optional human note (e.g. "previousHash mismatch"). */
+  message?: string | null
+  computedHash?: string | null
+  expectedHash?: string | null
+}
+
+// ─── Company logo response ────────────────────────────────────────────────────
+export interface CompanyLogoResponse {
+  message?: string
+  logoUrl?: string | null
+  logoDisplayUrl?: string | null
 }

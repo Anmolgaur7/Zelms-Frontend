@@ -18,8 +18,19 @@ import type {
   BulkCreateBody,
   BulkCreateResponse,
   SOP,
+  SopStatus,
   Assignment,
+  AssignmentListQuery,
+  AssignmentStatus,
+  CompanyAssignmentList,
+  CompanyAssignmentStats,
+  TraineeDossier,
+  AuditLogEntry,
+  AuditLogFeed,
+  AuditLogVerification,
+  CompanyLogoResponse,
 } from '@/types/admin'
+import type { UserRole } from '@/types/auth'
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
@@ -90,8 +101,99 @@ export async function createDepartment(
 export async function getCompany(): Promise<Company | null> {
   try {
     return await api.get<Company>('/api/admin/company')
-  } catch {
+  } catch (e) {
+    console.error('[admin.getCompany]', e)
     return null
+  }
+}
+
+/**
+ * Multipart upload of the company logo (PNG/JPEG). Refreshes the dashboard
+ * routes that show branding so the new logo appears immediately.
+ */
+export async function uploadCompanyLogo(
+  formData: FormData,
+): Promise<ActionResult<CompanyLogoResponse>> {
+  try {
+    const data = await api.postForm<CompanyLogoResponse>(
+      '/api/admin/company/logo',
+      formData,
+    )
+    // Sidebar header + every dashboard page reads getCompany().
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/company')
+    return { data }
+  } catch (e) {
+    console.error('[admin.uploadCompanyLogo]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Failed to upload logo.' }
+  }
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+interface AuditFetchOpts {
+  page?: number
+  limit?: number
+}
+
+/**
+ * Tenant-side audit feed: `GET /api/audit/company?page=&limit=`.
+ * Tolerant of array or `{ logs, page, limit, total }` envelopes.
+ */
+export async function getAuditFeed(
+  opts: AuditFetchOpts = {},
+): Promise<AuditLogFeed> {
+  const page = opts.page ?? 1
+  const limit = opts.limit ?? 25
+  try {
+    const raw = await api.get<unknown>(
+      `/api/audit/company?page=${page}&limit=${limit}`,
+    )
+    if (Array.isArray(raw)) {
+      return { logs: raw as AuditLogEntry[], page, limit, total: raw.length }
+    }
+    if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>
+      const logs = Array.isArray(obj.logs)
+        ? (obj.logs as AuditLogEntry[])
+        : Array.isArray(obj.data)
+        ? (obj.data as AuditLogEntry[])
+        : []
+      return {
+        logs,
+        page: typeof obj.page === 'number' ? obj.page : page,
+        limit: typeof obj.limit === 'number' ? obj.limit : limit,
+        total: typeof obj.total === 'number' ? obj.total : undefined,
+        hasMore: typeof obj.hasMore === 'boolean' ? obj.hasMore : undefined,
+      }
+    }
+    return { logs: [], page, limit, total: 0 }
+  } catch (e) {
+    console.error('[admin.getAuditFeed]', e)
+    return { logs: [], page, limit, total: 0 }
+  }
+}
+
+export async function getAuditEntry(id: string): Promise<AuditLogEntry | null> {
+  try {
+    return await api.get<AuditLogEntry>(`/api/audit/${id}`)
+  } catch (e) {
+    console.error('[admin.getAuditEntry]', e)
+    return null
+  }
+}
+
+export async function verifyAuditEntry(
+  id: string,
+): Promise<ActionResult<AuditLogVerification>> {
+  try {
+    const data = await api.get<AuditLogVerification>(`/api/audit/${id}/verify`)
+    return { data }
+  } catch (e) {
+    console.error('[admin.verifyAuditEntry]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Could not verify entry.' }
   }
 }
 
@@ -151,106 +253,249 @@ export async function getSopSignedUrl(
   }
 }
 
+// ─── Lifecycle mutations (e-signed) ──────────────────────────────────────────
+//
+// All four actions below correspond to privileged GxP operations. The backend
+// records every call in the audit log together with the supplied `reason` (and
+// the `password` re-auth proof when required).
+//
+//   - changeSopStatus     PATCH /api/sops/:id/status        password + reason
+//   - reviseSop           POST  /api/sops/:id/revise        reason only
+//   - unlockAssignment    PATCH /api/assignments/:id/unlock password + reason
+//   - changeUserRole      PATCH /api/admin/users/:id/role   reason only
+//
+// The shared <EsignFormDialog/> on the client side enforces a ≥10-char reason
+// (matching the backend zod schema). Errors are forwarded verbatim so the UI
+// can show `INVALID_PASSWORD`, `VALIDATION_ERROR`, etc.
+
+/** Body accepted by `PATCH /api/sops/:id/status`. */
+export interface ChangeSopStatusBody {
+  status: SopStatus
+  reason: string
+  password: string
+}
+
+export async function changeSopStatus(
+  sopId: string,
+  body: ChangeSopStatusBody,
+): Promise<ActionResult<SOP>> {
+  try {
+    const data = await api.patch<SOP>(`/api/sops/${sopId}/status`, body)
+    revalidatePath('/dashboard/sops')
+    revalidatePath('/dashboard/assignments')
+    return { data }
+  } catch (e) {
+    console.error('[admin.changeSopStatus]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Could not change SOP status.' }
+  }
+}
+
+/** Body accepted by `POST /api/sops/:id/revise`. */
+export interface ReviseSopBody {
+  version: string
+  reason: string
+}
+
+export async function reviseSop(
+  sopId: string,
+  body: ReviseSopBody,
+): Promise<ActionResult<SOP>> {
+  try {
+    const data = await api.post<SOP>(`/api/sops/${sopId}/revise`, body)
+    revalidatePath('/dashboard/sops')
+    return { data }
+  } catch (e) {
+    console.error('[admin.reviseSop]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Could not revise SOP.' }
+  }
+}
+
+/** Body accepted by `PATCH /api/assignments/:id/unlock`. */
+export interface UnlockAssignmentBody {
+  reason: string
+  password: string
+}
+
+export async function unlockAssignment(
+  assignmentId: string,
+  body: UnlockAssignmentBody,
+): Promise<ActionResult<Assignment>> {
+  try {
+    const data = await api.patch<Assignment>(
+      `/api/assignments/${assignmentId}/unlock`,
+      body,
+    )
+    // Many surfaces show locked-out rows; refresh all of them.
+    revalidatePath('/dashboard/assignments')
+    revalidatePath('/dashboard/users')
+    revalidatePath(`/dashboard/users/${(data as Assignment).userId ?? ''}`)
+    return { data }
+  } catch (e) {
+    console.error('[admin.unlockAssignment]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Could not unlock assignment.' }
+  }
+}
+
+/** Body accepted by `PATCH /api/admin/users/:id/role`. */
+export interface ChangeUserRoleBody {
+  role: UserRole
+  reason: string
+}
+
+export async function changeUserRole(
+  userId: string,
+  body: ChangeUserRoleBody,
+): Promise<ActionResult<AdminUser>> {
+  try {
+    const data = await api.patch<AdminUser>(
+      `/api/admin/users/${userId}/role`,
+      body,
+    )
+    revalidatePath('/dashboard/users')
+    revalidatePath(`/dashboard/users/${userId}`)
+    return { data }
+  } catch (e) {
+    console.error('[admin.changeUserRole]', e)
+    if (e instanceof ApiError) return { error: e.message, errorCode: e.errorCode }
+    return { error: 'Could not change user role.' }
+  }
+}
+
 // ─── Assignments ──────────────────────────────────────────────────────────────
 
-// The backend does not document a single "list all assignments" endpoint for
-// admins. We probe known candidates in order, then fall back to deriving the
-// list from /api/analytics/compliance (which returns per-user training rows).
-const ADMIN_ASSIGNMENT_LIST_ENDPOINTS = [
-  '/api/assignments/',
-  '/api/assignments',
-  '/api/admin/assignments',
-  '/api/admin/assignments/',
-  '/api/analytics/compliance',
-] as const
-
-export interface AdminAssignmentsResult {
-  data: Assignment[]
-  errors: Array<{ path: string; message: string; code: string; status?: number }>
-  endpointUsed: string | null
+export interface FetchError {
+  path: string
+  message: string
+  code: string
+  status?: number
 }
 
-/** Try every known key on which a payload might hide the assignment array. */
-function extractAssignments(raw: unknown): Assignment[] | null {
-  if (Array.isArray(raw)) return raw as Assignment[]
-  if (!raw || typeof raw !== 'object') return null
+export interface CompanyAssignmentsResult {
+  list: CompanyAssignmentList
+  stats: CompanyAssignmentStats | null
+  error: FetchError | null
+  statsError: FetchError | null
+}
 
-  const obj = raw as Record<string, unknown>
+const EMPTY_LIST: CompanyAssignmentList = { data: [], total: 0, page: 1, limit: 25 }
 
-  // Common envelope keys
-  for (const key of ['assignments', 'data', 'items', 'results', 'rows', 'records']) {
-    const v = obj[key]
-    if (Array.isArray(v)) return v as Assignment[]
+function toFetchError(path: string, e: unknown): FetchError {
+  if (e instanceof ApiError) {
+    return { path, message: e.message, code: e.errorCode, status: e.status }
   }
-
-  // Analytics-style: { users: [{ assignments: [...] }] } → flatten
-  if (Array.isArray(obj.users)) {
-    const flattened: Assignment[] = []
-    for (const user of obj.users as Array<Record<string, unknown>>) {
-      const userAssignments = user.assignments
-      if (Array.isArray(userAssignments)) {
-        for (const a of userAssignments as Assignment[]) {
-          flattened.push({
-            ...a,
-            user: a.user ?? {
-              name: (user.name as string) ?? '',
-              employeeId: (user.employeeId as string) ?? '',
-            },
-          })
-        }
-      }
-    }
-    if (flattened.length > 0 || obj.users.length > 0) return flattened
+  return {
+    path,
+    message: e instanceof Error ? e.message : 'Unknown error',
+    code: 'CLIENT_ERROR',
   }
-
-  return null
 }
 
-export async function fetchAssignments(): Promise<AdminAssignmentsResult> {
-  const errors: AdminAssignmentsResult['errors'] = []
-
-  for (const path of ADMIN_ASSIGNMENT_LIST_ENDPOINTS) {
-    try {
-      const raw = await api.get<unknown>(path)
-      const list = extractAssignments(raw)
-      if (list !== null) {
-        return { data: list, errors, endpointUsed: path }
-      }
-      // Endpoint responded 2xx but in an unexpected shape — record and keep probing.
-      errors.push({
-        path,
-        message: 'Unexpected response shape (no assignment array found).',
-        code: 'UNEXPECTED_SHAPE',
-        status: 200,
-      })
-    } catch (e) {
-      if (e instanceof ApiError) {
-        errors.push({ path, message: e.message, code: e.errorCode, status: e.status })
-        // Auth / permission errors mean we shouldn't keep probing — stop.
-        if (e.status === 401 || e.status === 403) break
-      } else {
-        errors.push({
-          path,
-          message: e instanceof Error ? e.message : 'Unknown error',
-          code: 'CLIENT_ERROR',
-        })
-        break
-      }
-    }
-  }
-
-  console.error('[admin.fetchAssignments] all endpoints failed', errors)
-  return { data: [], errors, endpointUsed: null }
+function buildCompanyQuery(q: AssignmentListQuery = {}): string {
+  const params = new URLSearchParams()
+  params.set('page', String(q.page ?? 1))
+  params.set('limit', String(Math.min(Math.max(q.limit ?? 25, 1), 100)))
+  if (q.userId) params.set('userId', q.userId)
+  if (q.assignmentId) params.set('assignmentId', q.assignmentId)
+  if (q.status) params.set('status', q.status)
+  if (q.quizId) params.set('quizId', q.quizId)
+  if (q.sopId) params.set('sopId', q.sopId)
+  if (q.search) params.set('search', q.search)
+  if (q.overdueOnly) params.set('overdueOnly', 'true')
+  return params.toString()
 }
 
-export async function getAssignments(): Promise<Assignment[]> {
-  const result = await fetchAssignments()
-  return result.data
-}
-
-export async function getQuizzesBySOP(sopId: string): Promise<any[]> {
+/**
+ * `GET /api/assignments/company` — paginated tenant-wide list.
+ * Tenant token required (ADMIN | TRAINER | AUDITOR). Returns the documented
+ * `{ data, total, page, limit }` shape directly.
+ */
+export async function getCompanyAssignments(
+  query: AssignmentListQuery = {},
+): Promise<{ list: CompanyAssignmentList; error: FetchError | null }> {
+  const path = '/api/assignments/company'
   try {
-    return await api.get<any[]>(`/api/quizzes/sop/${sopId}`)
+    const raw = await api.get<CompanyAssignmentList>(`${path}?${buildCompanyQuery(query)}`)
+    const data = Array.isArray(raw.data) ? raw.data : []
+    return {
+      list: {
+        data,
+        total: typeof raw.total === 'number' ? raw.total : data.length,
+        page: typeof raw.page === 'number' ? raw.page : (query.page ?? 1),
+        limit: typeof raw.limit === 'number' ? raw.limit : (query.limit ?? 25),
+      },
+      error: null,
+    }
+  } catch (e) {
+    console.error('[admin.getCompanyAssignments]', e)
+    return { list: { ...EMPTY_LIST, page: query.page ?? 1 }, error: toFetchError(path, e) }
+  }
+}
+
+/**
+ * `GET /api/assignments/company/stats` — KPI snapshot for the tenant.
+ */
+export async function getCompanyAssignmentStats(): Promise<{
+  stats: CompanyAssignmentStats | null
+  error: FetchError | null
+}> {
+  const path = '/api/assignments/company/stats'
+  try {
+    const raw = await api.get<CompanyAssignmentStats>(path)
+    return { stats: raw, error: null }
+  } catch (e) {
+    console.error('[admin.getCompanyAssignmentStats]', e)
+    return { stats: null, error: toFetchError(path, e) }
+  }
+}
+
+/**
+ * `GET /api/assignments/company/users/:userId` — per-user dossier.
+ * Supports pagination + status filter on the inner `assignments` block.
+ */
+export async function getTraineeDossier(
+  userId: string,
+  opts: { page?: number; limit?: number; status?: AssignmentStatus } = {},
+): Promise<{ dossier: TraineeDossier | null; error: FetchError | null }> {
+  const path = `/api/assignments/company/users/${userId}`
+  const params = new URLSearchParams()
+  params.set('page', String(opts.page ?? 1))
+  params.set('limit', String(Math.min(Math.max(opts.limit ?? 25, 1), 100)))
+  if (opts.status) params.set('status', opts.status)
+
+  try {
+    const raw = await api.get<TraineeDossier>(`${path}?${params.toString()}`)
+    return { dossier: raw, error: null }
+  } catch (e) {
+    console.error('[admin.getTraineeDossier]', e)
+    return { dossier: null, error: toFetchError(path, e) }
+  }
+}
+
+/**
+ * One-shot fetch used by the `/dashboard/assignments` page server component:
+ * list + stats in parallel, surfaces errors per call.
+ */
+export async function getCompanyAssignmentsPageData(
+  query: AssignmentListQuery = {},
+): Promise<CompanyAssignmentsResult> {
+  const [listRes, statsRes] = await Promise.all([
+    getCompanyAssignments(query),
+    getCompanyAssignmentStats(),
+  ])
+  return {
+    list: listRes.list,
+    stats: statsRes.stats,
+    error: listRes.error,
+    statsError: statsRes.error,
+  }
+}
+
+export async function getQuizzesBySOP(sopId: string): Promise<unknown[]> {
+  try {
+    return await api.get<unknown[]>(`/api/quizzes/sop/${sopId}`)
   } catch {
     return []
   }

@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
 } from 'lucide-react'
 import type { StudyMaterials, StudyFlashcard } from '@/types/admin'
+import { MarkdownView } from './markdown-view'
 
 interface PanelProps {
   result:
@@ -86,8 +87,8 @@ export function StudyMaterialsPanel({ result }: PanelProps) {
               AI Summary
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm leading-relaxed whitespace-pre-line">
-            {summary}
+          <CardContent className="text-sm">
+            <MarkdownView>{summary}</MarkdownView>
           </CardContent>
         </Card>
       )}
@@ -105,7 +106,9 @@ export function StudyMaterialsPanel({ result }: PanelProps) {
               {keyPoints.map((kp, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="text-emerald-600 mt-0.5">•</span>
-                  <span>{kp}</span>
+                  <span className="leading-relaxed">
+                    <MarkdownView variant="compact">{kp}</MarkdownView>
+                  </span>
                 </li>
               ))}
             </ul>

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "e2e-full-klonix-001",
     "name": "E2E — Full flow (Klonixpharback)",
-    "description": "## Docs (read first)\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md`\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **This collection:** `postman/E2E_POSTMAN_README.md`\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
+    "description": "## Docs (read first)\\n- **Full route table:** `docs/API_ENDPOINTS.md`\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md` (includes **§6a** company assignment reports)\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **This collection:** `postman/E2E_POSTMAN_README.md`\\n\\n## Assignment admin APIs (folder **6**)\\nTenant **`companyToken`** only (`ADMIN` / `TRAINER` / `AUDITOR`). **6.0a** `GET /api/assignments/company/stats` — KPIs. **6.0b** `GET /api/assignments/company` — paginated list (`page`, `limit`, filters in request description). **6.0c** `GET /api/assignments/company/users/{{invitedUserId}}` — per-user summary + history; run after folder **4** sets **`invitedUserId`**. Platform token → **403** `TENANT_REQUIRED`.\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`, `TENANT_REQUIRED`, `SOP_DUPLICATE_TITLE_VERSION`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -77,6 +77,11 @@
     {
       "key": "auditLogId",
       "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "description": "Optional: first notification id from 9.1 Tests"
     }
   ],
   "item": [
@@ -538,7 +543,7 @@
     },
     {
       "name": "5 — SOPs & quizzes",
-      "description": "**5.5** AI study materials (`GET .../sops/:id/study`). **5.6** SOP chat (`POST .../sops/:id/chat`). Need **`sopId`** from **5.2** and a valid **`companyToken`**.",
+      "description": "**5.2** upload sets **`sopId`**. **5.3** builds **`quizSubmitPayload`**. **5.5** study (`GET .../study`). **5.6** chat (`POST .../chat`). **5.7** signed file. **5.8–5.9** status (e-sign + password). **5.10** revise (new DRAFT). Re-running **5.2** with the same title+version returns **409** `SOP_DUPLICATE_TITLE_VERSION` unless you change version/title or archive/remove the old row. Need **`companyToken`**.",
       "item": [
         {
           "name": "5.1 List SOPs",
@@ -714,13 +719,202 @@
               }
             }
           }
+        },
+        {
+          "name": "5.7 GET SOP file (signed PDF access)",
+          "request": {
+            "description": "`GET /api/sops/:id/file` — short-lived signed URL / redirect to the stored PDF. Same roles as SOP list.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/file"
+          }
+        },
+        {
+          "name": "5.8 PATCH SOP status → ARCHIVED (e-sign)",
+          "request": {
+            "description": "`PATCH /api/sops/:id/status` — body `status`, `reason` (≥10 chars), `password` (current user). **Password** here must match the tenant admin used in folder 2 (default E2E: `Admin@1234`). Safe before folder 6; quiz rows stay usable.",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ARCHIVED\",\n  \"reason\": \"E2E Postman: archive after verification; document superseded for training sandbox.\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.9 PATCH SOP status → ACTIVE (re-activate)",
+          "request": {
+            "description": "Run after **5.8** if you want the SOP **ACTIVE** again for UI that filters by status.",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"E2E Postman: re-activate document after archive test completed successfully.\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.10 POST SOP revise (clone as DRAFT)",
+          "request": {
+            "description": "`POST /api/sops/:id/revise` — body `version`, `reason` (≥10). Creates a **new** SOP row in **DRAFT** linked via `parentSopId`. Upload duplicate title+version now returns **409** `SOP_DUPLICATE_TITLE_VERSION`; use revise or bump version.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/revise",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0-revB\",\n  \"reason\": \"E2E Postman: controlled revision path instead of re-uploading same version.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
     {
       "name": "6 — Assignments & training",
-      "description": "**6.2** login → `mustChangePassword: true`. **6.3** change password → new `token`. **6.6** submit quiz — body built from **5.3** Tests script (`quizSubmitPayload`).",
+      "description": "**6.0a–c** company assignment **stats**, **list**, and **per-user** history (`ADMIN` / `TRAINER` / `AUDITOR` + tenant token). **6.2** login → `mustChangePassword: true`. **6.3** change password → new `token`. **6.6** submit quiz — body built from **5.3** Tests script (`quizSubmitPayload`).",
       "item": [
+        {
+          "name": "6.0a Tenant assignment stats (admin)",
+          "request": {
+            "description": "`GET /api/assignments/company/stats` — counts by status, overdue pendings, lockouts, trainees with assignments.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/company/stats"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) return;",
+                  "const d = pm.response.json();",
+                  "pm.test(\"company stats has KPI fields\", function () {",
+                  "  pm.expect(d).to.have.property(\"totalAssignments\");",
+                  "  pm.expect(d).to.have.property(\"byStatus\");",
+                  "  pm.expect(d).to.have.property(\"traineesWithAssignments\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.0b Tenant assignment list (admin)",
+          "request": {
+            "description": "`GET /api/assignments/company` — optional query: `page`, `limit`, `userId`, `status`, `quizId`, `sopId`, `search`, `overdueOnly=true`, `assignmentId`.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/company?page=1&limit=25"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) return;",
+                  "const d = pm.response.json();",
+                  "pm.test(\"company list paginated shape\", function () {",
+                  "  pm.expect(d).to.have.property(\"data\");",
+                  "  pm.expect(d).to.have.property(\"total\");",
+                  "  pm.expect(d.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.0c Trainee assignment profile (admin)",
+          "request": {
+            "description": "`GET /api/assignments/company/users/:userId` — summary + paginated rows. Uses **`invitedUserId`** from folder **4** (run after invite).",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/company/users/{{invitedUserId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) return;",
+                  "const d = pm.response.json();",
+                  "pm.test(\"trainee profile shape\", function () {",
+                  "  pm.expect(d).to.have.property(\"trainee\");",
+                  "  pm.expect(d).to.have.property(\"summary\");",
+                  "  pm.expect(d).to.have.property(\"assignments\");",
+                  "  pm.expect(d.assignments).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "6.1 Assign quiz to invited user",
           "request": {
@@ -910,6 +1104,33 @@
               }
             }
           ]
+        },
+        {
+          "name": "6.7 PATCH assignment unlock (trainer; optional)",
+          "request": {
+            "description": "Only when assignment status is **LOCKED_OUT** (3 failed submits). Body: `reason` (≥10), `password` (trainer). Uses same E2E admin password as 5.8. Expect **400/404** if not locked — that is normal in a clean E2E run.",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/unlock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"E2E Postman: trainer unlock after lockout per compliance procedure.\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -1052,6 +1273,41 @@
             ],
             "url": "{{baseUrl}}/api/audit/{{auditLogId}}"
           }
+        },
+        {
+          "name": "8.6 Audit platform feed (PLATFORM_ADMIN)",
+          "request": {
+            "description": "`GET /api/audit/platform` — requires **1.1** `platformToken`. Query `page`, `limit`.",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{platformToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/audit/platform?page=1&limit=10"
+          }
+        },
+        {
+          "name": "8.7 Analytics SOP difficulty",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/analytics/sop-difficulty"
+          }
         }
       ]
     },
@@ -1073,7 +1329,22 @@
               }
             ],
             "url": "{{baseUrl}}/api/notifications/"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const arr = pm.response.json();",
+                  "  const first = Array.isArray(arr) && arr[0];",
+                  "  if (first && first.id) pm.collectionVariables.set(\"notificationId\", first.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "9.2 List e-signatures",
@@ -1090,6 +1361,41 @@
               }
             ],
             "url": "{{baseUrl}}/api/esignatures/"
+          }
+        },
+        {
+          "name": "9.3 PATCH mark all notifications read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/read-all"
+          }
+        },
+        {
+          "name": "9.4 PATCH mark one notification read",
+          "request": {
+            "description": "Uses **notificationId** from **9.1** Tests (run 9.1 first).",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read"
           }
         }
       ]
