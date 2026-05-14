@@ -128,15 +128,15 @@
     --chart-5: 340 75% 55%;
     --radius: 0.625rem;
 
-    /* Sidebar — soft tint that complements primary without competing. */
-    --sidebar-background: 220 30% 98%;
-    --sidebar-foreground: 222 25% 25%;
-    --sidebar-primary: 243 75% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 243 75% 96%;
-    --sidebar-accent-foreground: 243 75% 30%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 243 75% 52%;
+    /* Sidebar — deep rail (contrasts with light shell). */
+    --sidebar-background: 222 38% 12%;
+    --sidebar-foreground: 210 25% 96%;
+    --sidebar-primary: 243 78% 68%;
+    --sidebar-primary-foreground: 222 42% 8%;
+    --sidebar-accent: 222 32% 18%;
+    --sidebar-accent-foreground: 210 25% 98%;
+    --sidebar-border: 222 28% 20%;
+    --sidebar-ring: 243 78% 68%;
   }
   .dark {
     --background: 222 47% 6%;
@@ -168,14 +168,14 @@
     --chart-4: 38 92% 60%;
     --chart-5: 340 80% 65%;
 
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 220 14% 90%;
-    --sidebar-primary: 243 85% 68%;
-    --sidebar-primary-foreground: 222 47% 8%;
-    --sidebar-accent: 243 60% 20%;
-    --sidebar-accent-foreground: 243 85% 85%;
-    --sidebar-border: 222 30% 14%;
-    --sidebar-ring: 243 85% 68%;
+    --sidebar-background: 224 42% 6%;
+    --sidebar-foreground: 215 20% 94%;
+    --sidebar-primary: 243 82% 72%;
+    --sidebar-primary-foreground: 224 45% 6%;
+    --sidebar-accent: 222 35% 14%;
+    --sidebar-accent-foreground: 215 25% 96%;
+    --sidebar-border: 222 32% 12%;
+    --sidebar-ring: 243 82% 72%;
   }
 }
 

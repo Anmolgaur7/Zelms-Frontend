@@ -22,7 +22,6 @@ import {
   ShieldCheckIcon,
   StampIcon,
   SettingsIcon,
-  HelpCircleIcon,
   BookOpenIcon,
   AwardIcon,
   ActivityIcon,
@@ -42,7 +41,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import type { SessionUser, UserRole } from '@/types/auth'
 
@@ -52,7 +50,18 @@ interface NavItem {
   url: string
   icon: React.ElementType
   roles: UserRole[]   // empty = all roles
+  section: string
 }
+
+const NAV_SECTION_ORDER = [
+  'Overview',
+  'Organization',
+  'Content & training',
+  'Analytics',
+  'Audit & records',
+  'Administration',
+  'My learning',
+] as const
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -60,42 +69,49 @@ const NAV_ITEMS: NavItem[] = [
     url: '/dashboard',
     icon: LayoutDashboardIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+    section: 'Overview',
   },
   {
     title: 'Users',
     url: '/dashboard/users',
     icon: UsersIcon,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    section: 'Organization',
   },
   {
     title: 'Departments',
     url: '/dashboard/departments',
     icon: BuildingIcon,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    section: 'Organization',
   },
   {
     title: 'SOPs',
     url: '/dashboard/sops',
     icon: FileTextIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+    section: 'Content & training',
   },
   {
     title: 'Assignments',
     url: '/dashboard/assignments',
     icon: ClipboardCheckIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER'],
+    section: 'Content & training',
   },
   {
     title: 'Compliance',
     url: '/dashboard/analytics/compliance',
     icon: ActivityIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+    section: 'Analytics',
   },
   {
     title: 'Risk',
     url: '/dashboard/analytics/risk',
     icon: AlertTriangleIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+    section: 'Analytics',
   },
   {
     title: 'SOP Difficulty',
@@ -103,47 +119,50 @@ const NAV_ITEMS: NavItem[] = [
     icon: TargetIcon,
     // Backend: ADMIN | TRAINER (SUPER_ADMIN treated as full admin).
     roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER'],
+    section: 'Analytics',
   },
   {
     title: 'Audit Log',
     url: '/dashboard/audit',
     icon: ShieldCheckIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+    section: 'Audit & records',
   },
   {
     title: 'E-Signatures',
     url: '/dashboard/audit/signatures',
     icon: StampIcon,
     roles: ['SUPER_ADMIN', 'ADMIN', 'AUDITOR'],
+    section: 'Audit & records',
   },
   {
     title: 'Company Settings',
     url: '/dashboard/company',
     icon: SettingsIcon,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    section: 'Administration',
   },
   {
     title: 'My Trainings',
     url: '/my-trainings',
     icon: ClipboardCheckIcon,
     roles: ['EMPLOYEE'],
+    section: 'My learning',
   },
   {
     title: 'SOP Library',
     url: '/my-trainings/library',
     icon: BookOpenIcon,
     roles: ['EMPLOYEE'],
+    section: 'My learning',
   },
   {
     title: 'Certificates',
     url: '/my-trainings/certificates',
     icon: AwardIcon,
     roles: ['EMPLOYEE'],
+    section: 'My learning',
   },
-]
-
-const SECONDARY_ITEMS = [
-  { title: 'Help', url: '#', icon: HelpCircleIcon },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -178,99 +197,99 @@ export function AppSidebar({
   const displayName = companyName ?? session.companyName ?? 'Pharma LMS'
   const homeHref = session.role === 'EMPLOYEE' ? '/my-trainings' : '/dashboard'
 
+  const itemsBySection = React.useMemo(() => {
+    const map = new Map<string, NavItem[]>()
+    for (const item of filteredNav) {
+      const list = map.get(item.section) ?? []
+      list.push(item)
+      map.set(item.section, list)
+    }
+    return map
+  }, [filteredNav])
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      {/* ── Header: company logo only (no name) ───────────────────────── */}
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
         <Link
           href={homeHref}
-          className="flex justify-center rounded-md px-2 py-3 outline-none ring-sidebar-ring transition-transform duration-300 hover:scale-[1.02] focus-visible:ring-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2"
+          title={displayName}
+          className="flex justify-center rounded-md px-1 py-0.5 outline-none ring-sidebar-ring transition-transform duration-300 hover:scale-[1.01] focus-visible:ring-2 group-data-[collapsible=icon]:py-0.5"
         >
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
               alt={`${displayName} logo`}
-              className="h-10 max-h-11 w-auto max-w-[min(100%,200px)] object-contain group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:max-w-8"
+              className="h-14 w-auto max-w-[min(100%,240px)] object-contain group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:max-w-9"
             />
           ) : (
             <ZeavarWheel
               alt={`${displayName} logo`}
               animate
-              className="h-11 w-11 shrink-0 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8"
+              className="h-14 w-14 shrink-0 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9"
             />
           )}
         </Link>
       </SidebarHeader>
 
-      {/* ── Main nav ───────────────────────────────────────────────────── */}
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarMenu>
-            {filteredNav.map((item) => {
-              const isActive = item.url === activeUrl
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.title}
-                    className="group/nav relative transition-colors duration-150"
-                  >
-                    <Link href={item.url}>
-                      {isActive && (
-                        <span
-                          aria-hidden
-                          className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary"
-                        />
-                      )}
-                      <item.icon
-                        className={
-                          isActive
-                            ? 'h-4 w-4 text-primary'
-                            : 'h-4 w-4 transition-transform duration-200 group-hover/nav:scale-110 group-hover/nav:text-primary'
-                        }
-                      />
-                      <span
-                        className={
-                          isActive
-                            ? 'text-sidebar-accent-foreground'
-                            : 'transition-colors duration-150'
-                        }
+      <SidebarContent className="gap-1 overflow-x-hidden">
+        {NAV_SECTION_ORDER.map((section) => {
+          const items = itemsBySection.get(section)
+          if (!items?.length) return null
+          return (
+            <SidebarGroup key={section} className="p-2 py-1">
+              <SidebarGroupLabel className="h-auto min-h-0 px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+                {section}
+              </SidebarGroupLabel>
+              <SidebarMenu className="gap-0.5">
+                {items.map((item) => {
+                  const isActive = item.url === activeUrl
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        size="default"
+                        isActive={isActive}
+                        tooltip={item.title}
+                        className="group/nav relative h-9 min-h-9 px-2.5 py-2 text-sm transition-colors duration-150 [&>svg]:size-[18px]"
                       >
-                        {item.title}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        {/* Secondary */}
-        <SidebarGroup className="mt-auto">
-          <SidebarMenu>
-            {SECONDARY_ITEMS.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.url}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+                        <Link href={item.url}>
+                          {isActive && (
+                            <span
+                              aria-hidden
+                              className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-sidebar-primary"
+                            />
+                          )}
+                          <item.icon
+                            className={
+                              isActive
+                                ? 'size-[18px] text-sidebar-primary'
+                                : 'size-[18px] transition-transform duration-200 group-hover/nav:scale-110 group-hover/nav:text-sidebar-primary'
+                            }
+                          />
+                          <span
+                            className={
+                              isActive
+                                ? 'text-sidebar-accent-foreground'
+                                : 'transition-colors duration-150'
+                            }
+                          >
+                            {item.title}
+                          </span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          )
+        })}
       </SidebarContent>
 
       {/* ── Footer / User ──────────────────────────────────────────────── */}
-      <SidebarFooter>
-        <p className="px-2 text-center text-[10px] font-medium lowercase leading-snug tracking-wide text-muted-foreground">
+      <SidebarFooter className="gap-1.5 p-2 pt-1.5">
+        <p className="px-1 text-center text-[10px] font-medium lowercase leading-snug tracking-wide text-sidebar-foreground/55">
           powered by zeavar
         </p>
         <NavUser session={session} />

@@ -7,8 +7,19 @@
 
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { getUsers } from '@/lib/actions/admin'
-import { getAdminStats } from '@/lib/actions/analytics'
+import { redirect } from 'next/navigation'
+import {
+  getUsers,
+  getCompanyAssignmentStats,
+  getSOPs,
+  getDepartments,
+  getAuditFeed,
+} from '@/lib/actions/admin'
+import {
+  getAdminStats,
+  getComplianceReport,
+  getSopDifficulty,
+} from '@/lib/actions/analytics'
 import { getSession } from '@/lib/session'
 import {
   UsersIcon,
@@ -34,6 +45,25 @@ import { CreateUserModal } from '@/components/modals/create-user-modal'
 import { CreateDepartmentModal } from '@/components/modals/create-department-modal'
 import { CreateSOPModal } from '@/components/modals/create-sop-modal'
 import { CreateAssignmentModal } from '@/components/modals/create-assignment-modal'
+import { DashboardOverviewCharts } from '@/components/dashboard/dashboard-overview-charts'
+import { DashboardExtendedCharts } from '@/components/dashboard/dashboard-extended-charts'
+import type { CompanyAssignmentStats, SOP, AdminUser, AuditLogEntry, Department } from '@/types/admin'
+import type { UserRole } from '@/types/auth'
+import type {
+  ComplianceReport,
+  SopDifficultyReport,
+  SopDifficultyRow,
+} from '@/types/analytics'
+import {
+  complianceRateOf,
+  departmentLabel,
+  normaliseDepartments,
+  normaliseDifficultyRows,
+  normaliseSops,
+  overallComplianceOf,
+} from '@/types/analytics'
+import type { ComplianceChartRow } from '@/components/analytics/compliance-chart'
+import type { DifficultyChartRow } from '@/components/analytics/difficulty-chart'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -126,11 +156,184 @@ function fmtPct(v: number | undefined | null): string {
   return `${pct.toFixed(0)}%`
 }
 
+type AssignmentBreakdown = {
+  pending: number
+  inProgress: number
+  completed: number
+  failed: number
+  overdue: number
+}
+
+function sumAssignmentBreakdown(a: AssignmentBreakdown): number {
+  return a.pending + a.inProgress + a.completed + a.failed + a.overdue
+}
+
+/** Same shape as the assignments console — fills charts when admin stats omit counts. */
+function assignmentsFromCompanyStats(
+  s: CompanyAssignmentStats | null,
+): AssignmentBreakdown | null {
+  if (!s?.byStatus) return null
+  const b = s.byStatus
+  return {
+    pending: b.PENDING ?? 0,
+    inProgress: b.IN_PROGRESS ?? 0,
+    completed: b.COMPLETED ?? 0,
+    failed: (b.FAILED ?? 0) + (b.LOCKED_OUT ?? 0),
+    overdue: b.OVERDUE ?? 0,
+  }
+}
+
+/** Matches the SOP list page — draft bucket includes DRAFT + UNDER_REVIEW. */
+function tallySopsByBucket(sops: SOP[]): {
+  active: number
+  draft: number
+  archived: number
+} {
+  let active = 0
+  let draft = 0
+  let archived = 0
+  for (const sop of sops) {
+    const st = sop.status ?? 'DRAFT'
+    if (st === 'ACTIVE') active++
+    else if (st === 'ARCHIVED') archived++
+    else draft++
+  }
+  return { active, draft, archived }
+}
+
+function overallCompliancePct(report: ComplianceReport | null): number | null {
+  const v = overallComplianceOf(report)
+  if (v == null || Number.isNaN(v)) return null
+  return v <= 1 ? v * 100 : v
+}
+
+function buildComplianceDashboardRows(report: ComplianceReport | null): ComplianceChartRow[] {
+  if (!report) return []
+  const departments = normaliseDepartments(report)
+  if (departments.length > 0) {
+    return departments
+      .map((d) => {
+        const raw = complianceRateOf(d) ?? 0
+        return {
+          label: departmentLabel(d),
+          rate: raw <= 1 ? raw * 100 : raw,
+          total: d.total ?? d.totalAssignments ?? 0,
+          completed: d.completed ?? 0,
+        }
+      })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => a.rate - b.rate)
+      .slice(0, 10)
+  }
+  return normaliseSops(report)
+    .map((s) => {
+      const r = s.complianceRate ?? 0
+      const title = (s.sopTitle ?? 'SOP').trim() || 'SOP'
+      return {
+        label: title.length > 28 ? `${title.slice(0, 27)}…` : title,
+        rate: r <= 1 ? r * 100 : r,
+        total: s.assigned ?? 0,
+        completed: s.completed ?? 0,
+      }
+    })
+    .filter((row) => row.total > 0)
+    .sort((a, b) => a.rate - b.rate)
+    .slice(0, 10)
+}
+
+function passRateForDifficulty(row: SopDifficultyRow): number | null {
+  if (typeof row.passRate === 'number') {
+    return row.passRate <= 1 ? row.passRate * 100 : row.passRate
+  }
+  const attempts = row.attempts ?? row.totalAttempts
+  const passes = row.passes
+  if (typeof attempts === 'number' && attempts > 0 && typeof passes === 'number') {
+    return (passes / attempts) * 100
+  }
+  return null
+}
+
+function buildDifficultyChartRows(report: SopDifficultyReport | null): DifficultyChartRow[] {
+  const enriched = normaliseDifficultyRows(report)
+  return enriched
+    .map((r) => {
+      const rate = passRateForDifficulty(r)
+      const attempts = r.attempts ?? r.totalAttempts ?? 0
+      const avg =
+        typeof r.averageScore === 'number'
+          ? r.averageScore <= 1
+            ? r.averageScore * 100
+            : r.averageScore
+          : null
+      const title = (r.sopTitle ?? 'SOP').trim() || 'Untitled'
+      return { row: r, rate, attempts, avg, title }
+    })
+    .filter((x) => x.rate != null && x.attempts > 0)
+    .sort((a, b) => (a.rate ?? 100) - (b.rate ?? 100))
+    .slice(0, 10)
+    .map((x) => ({
+      label: x.title.length > 22 ? `${x.title.slice(0, 21)}…` : x.title,
+      passRate: x.rate ?? 0,
+      attempts: x.attempts,
+      averageScore: x.avg,
+    }))
+}
+
+function usersByDepartmentChart(users: AdminUser[], departments: Department[]) {
+  const nameById = new Map(departments.map((d) => [d.id, d.name]))
+  const m = new Map<string, number>()
+  for (const u of users) {
+    const label =
+      u.departmentId && nameById.has(u.departmentId)
+        ? nameById.get(u.departmentId)!
+        : u.department?.name?.trim() || 'Unassigned'
+    m.set(label, (m.get(label) ?? 0) + 1)
+  }
+  return Array.from(m.entries())
+    .map(([label, usersCount]) => ({
+      label: label.length > 26 ? `${label.slice(0, 25)}…` : label,
+      users: usersCount,
+    }))
+    .sort((a, b) => b.users - a.users)
+    .slice(0, 15)
+}
+
+function aggregateAuditActions(logs: AuditLogEntry[], top = 14): { label: string; count: number }[] {
+  const map = new Map<string, number>()
+  for (const log of logs) {
+    const action =
+      typeof log.action === 'string' && log.action.trim() ? log.action.trim() : 'UNKNOWN'
+    map.set(action, (map.get(action) ?? 0) + 1)
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, top)
+    .map(([full, count]) => ({
+      label: full.length > 40 ? `${full.slice(0, 39)}…` : full,
+      count,
+    }))
+}
+
 // ─── Stats (async) ────────────────────────────────────────────────────────────
-async function DashboardStats() {
-  const [users, { stats, error }] = await Promise.all([
+async function DashboardStats({ role }: { role: UserRole }) {
+  const [
+    users,
+    { stats, error },
+    assignStatsRes,
+    sopsList,
+    complianceRes,
+    difficultyRes,
+    departments,
+    auditFeed,
+  ] = await Promise.all([
     getUsers(),
     getAdminStats(),
+    getCompanyAssignmentStats(),
+    getSOPs(),
+    getComplianceReport(),
+    getSopDifficulty(),
+    getDepartments(),
+    getAuditFeed({ page: 1, limit: 100 }),
   ])
 
   // User-role tallies fall back to the users list so the tiles still render
@@ -141,6 +344,7 @@ async function DashboardStats() {
     (u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN',
   ).length
   const fallbackTrainers = users.filter((u) => u.role === 'TRAINER').length
+  const fallbackAuditors = users.filter((u) => u.role === 'AUDITOR').length
 
   const totalUsers = stats?.totalUsers ?? fallbackTotal
   const employees = stats?.employees ?? fallbackEmployees
@@ -151,6 +355,22 @@ async function DashboardStats() {
   const pending = stats?.pending
   const overdue = stats?.overdue
   const completionRate = stats?.completionRate
+  const auditors = stats?.auditors ?? fallbackAuditors
+
+  const completionNorm =
+    typeof completionRate === 'number' && !Number.isNaN(completionRate)
+      ? completionRate <= 1
+        ? completionRate * 100
+        : completionRate
+      : null
+
+  const rawScore = stats?.averageScore
+  const scoreNorm =
+    typeof rawScore === 'number' && !Number.isNaN(rawScore)
+      ? rawScore <= 1
+        ? rawScore * 100
+        : rawScore
+      : null
 
   return (
     <div className="space-y-4">
@@ -239,6 +459,70 @@ async function DashboardStats() {
           icon={TargetIcon}
         />
       </div>
+
+      <DashboardOverviewCharts
+        roles={{
+          employees,
+          trainers,
+          admins,
+          auditors,
+        }}
+        assignments={(() => {
+          const fromAdmin: AssignmentBreakdown = {
+            pending: pending ?? 0,
+            inProgress:
+              typeof stats?.inProgress === 'number' ? stats.inProgress : 0,
+            completed:
+              typeof stats?.completed === 'number' ? stats.completed : 0,
+            failed: typeof stats?.failed === 'number' ? stats.failed : 0,
+            overdue: overdue ?? 0,
+          }
+          const fromCompany = assignmentsFromCompanyStats(assignStatsRes.stats)
+          if (
+            fromCompany &&
+            sumAssignmentBreakdown(fromCompany) > 0
+          ) {
+            return fromCompany
+          }
+          return fromAdmin
+        })()}
+        sops={(() => {
+          const fromList = tallySopsByBucket(sopsList)
+          const listTotal = fromList.active + fromList.draft + fromList.archived
+          if (listTotal > 0) return fromList
+          return {
+            active:
+              typeof stats?.activeSops === 'number' ? stats.activeSops : 0,
+            draft:
+              typeof stats?.draftSops === 'number' ? stats.draftSops : 0,
+            archived:
+              typeof stats?.archivedSops === 'number'
+                ? stats.archivedSops
+                : 0,
+          }
+        })()}
+        completionRatePct={completionNorm}
+        averageScorePct={scoreNorm}
+      />
+
+      <DashboardExtendedCharts
+        role={role}
+        compliance={{
+          error: complianceRes.error?.code ?? complianceRes.error?.message ?? null,
+          overallPct: overallCompliancePct(complianceRes.report),
+          chartRows: buildComplianceDashboardRows(complianceRes.report),
+        }}
+        difficulty={{
+          error:
+            difficultyRes.error?.code ?? difficultyRes.error?.message ?? null,
+          rows: buildDifficultyChartRows(difficultyRes.report),
+        }}
+        departments={usersByDepartmentChart(users, departments)}
+        audit={{
+          error: null,
+          byAction: aggregateAuditActions(auditFeed.logs ?? []),
+        }}
+      />
     </div>
   )
 }
@@ -246,6 +530,7 @@ async function DashboardStats() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
   const session = await getSession()
+  if (!session) redirect('/login')
 
   return (
     <div className="@container/main flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -261,7 +546,7 @@ export default async function DashboardPage() {
 
       {/* Stats */}
       <Suspense fallback={<StatsSkeleton />}>
-        <DashboardStats />
+        <DashboardStats role={session.role} />
       </Suspense>
 
       {/* Quick actions */}

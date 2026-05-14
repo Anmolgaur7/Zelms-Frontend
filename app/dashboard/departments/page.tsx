@@ -5,7 +5,8 @@
  */
 
 import { Suspense } from 'react'
-import { getDepartments } from '@/lib/actions/admin'
+import { getDepartments, getUsers } from '@/lib/actions/admin'
+import type { AdminUser, Department } from '@/types/admin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BuildingIcon, UsersIcon, PlusIcon } from 'lucide-react'
 import { CreateDepartmentModal } from '@/components/modals/create-department-modal'
@@ -14,8 +15,21 @@ import { Button } from '@/components/ui/button'
 
 export const metadata = { title: 'Departments' }
 
+/** Headcount per department id — `/api/admin/departments` often omits `_count.users`. */
+function memberCountFromUsers(deptId: string, users: AdminUser[]): number {
+  return users.filter(
+    (u) => u.departmentId === deptId || u.department?.id === deptId,
+  ).length
+}
+
+function resolvedMemberCount(dept: Department, users: AdminUser[]): number {
+  const fromApi = typeof dept._count?.users === 'number' ? dept._count.users : 0
+  const fromDirectory = memberCountFromUsers(dept.id, users)
+  return Math.max(fromApi, fromDirectory)
+}
+
 async function DepartmentsList() {
-  const departments = await getDepartments()
+  const [departments, users] = await Promise.all([getDepartments(), getUsers()])
 
   if (departments.length === 0) {
     return (
@@ -28,7 +42,9 @@ async function DepartmentsList() {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {departments.map((dept) => (
+      {departments.map((dept) => {
+        const members = resolvedMemberCount(dept, users)
+        return (
         <Card key={dept.id} className="hover:border-primary/30 transition-colors">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -39,11 +55,14 @@ async function DepartmentsList() {
           <CardContent>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <UsersIcon className="h-3.5 w-3.5" />
-              <span>{dept._count?.users ?? 0} member{(dept._count?.users ?? 0) !== 1 ? 's' : ''}</span>
+              <span>
+                {members} member{members !== 1 ? 's' : ''}
+              </span>
             </div>
           </CardContent>
         </Card>
-      ))}
+        )
+      })}
     </div>
   )
 }
