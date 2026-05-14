@@ -73,6 +73,8 @@ export interface BulkAssignmentResult {
   assigned?: number
   created?: number
   skipped?: number
+  /** §6a / API — users in department (bulk-department response). */
+  departmentUserCount?: number
   count?: number
   /** Some implementations return the list of created assignment IDs. */
   assignmentIds?: string[]

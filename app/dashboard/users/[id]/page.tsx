@@ -26,6 +26,8 @@ import {
 } from 'lucide-react'
 
 import { getTraineeDossier } from '@/lib/actions/admin'
+import { assignmentDisplaySop } from '@/lib/assignment-display'
+import { resolvedTraineeSummaryCounts } from '@/lib/company-assignment-stats'
 import { getSession } from '@/lib/session'
 import { canAdministerAssignments } from '@/lib/tenant-permissions'
 import { Badge } from '@/components/ui/badge'
@@ -164,13 +166,10 @@ export default async function TraineeDossierPage({
       (acc, n) => acc + (typeof n === 'number' ? n : 0),
       0,
     )
+  const dossierKpis = resolvedTraineeSummaryCounts(summary)
   const lastCompletedAt = summary.lastCompletedAt
     ? new Date(summary.lastCompletedAt).toLocaleString()
     : null
-  const avgScore =
-    typeof summary.averageScore === 'number'
-      ? `${Math.round(summary.averageScore * 10) / 10}%`
-      : '—'
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
@@ -248,10 +247,7 @@ export default async function TraineeDossierPage({
             <div className="mt-0.5 rounded-md bg-muted/60 p-2 text-emerald-600">
               <CheckCircle2Icon className="h-4 w-4" />
             </div>
-            <StatLine
-              label="Passed"
-              value={summary.passed ?? summary.byStatus?.COMPLETED ?? 0}
-            />
+            <StatLine label="Passed" value={dossierKpis.passed} />
           </CardContent>
         </Card>
         <Card>
@@ -259,10 +255,7 @@ export default async function TraineeDossierPage({
             <div className="mt-0.5 rounded-md bg-muted/60 p-2 text-rose-600">
               <XCircleIcon className="h-4 w-4" />
             </div>
-            <StatLine
-              label="Failed"
-              value={summary.failed ?? summary.byStatus?.FAILED ?? 0}
-            />
+            <StatLine label="Failed" value={dossierKpis.failed} />
           </CardContent>
         </Card>
         <Card>
@@ -270,7 +263,7 @@ export default async function TraineeDossierPage({
             <div className="mt-0.5 rounded-md bg-muted/60 p-2 text-emerald-600">
               <TrendingUpIcon className="h-4 w-4" />
             </div>
-            <StatLine label="Avg score" value={avgScore} />
+            <StatLine label="Avg score" value={dossierKpis.avgDisplay} />
           </CardContent>
         </Card>
         <Card>
@@ -336,12 +329,10 @@ export default async function TraineeDossierPage({
                 </TableHeader>
                 <TableBody>
                   {assignments.data.map((ass) => {
-                    const sopId =
-                      ass.sop?.id ?? ass.quiz?.sop?.id ?? ass.sopId ?? undefined
-                    const sopTitle =
-                      ass.sop?.title ?? ass.quiz?.sop?.title ?? '—'
-                    const sopVersion =
-                      ass.sop?.version ?? ass.quiz?.sop?.version
+                    const disp = assignmentDisplaySop(ass)
+                    const sopId = disp.sopId
+                    const sopTitle = disp.title
+                    const sopVersion = disp.version
                     const due = ass.dueDate ?? ass.deadline ?? null
                     return (
                       <TableRow key={ass.id}>

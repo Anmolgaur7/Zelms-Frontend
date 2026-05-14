@@ -52,6 +52,7 @@ import {
   getSOPs,
   getQuizzesBySOP,
 } from '@/lib/actions/admin'
+import { formatAssignmentActionError } from '@/lib/assignment-display'
 import type { Department, SOP } from '@/types/admin'
 import { bulkAssignedCount } from '@/types/quizzes'
 
@@ -123,17 +124,30 @@ export function BulkAssignDialog({ trigger }: { trigger: React.ReactNode }) {
       })
 
       if (result.error) {
-        setServerError(result.error)
-        toast.error(result.error)
+        const msg = formatAssignmentActionError(
+          result.error,
+          result.errorCode,
+        )
+        setServerError(msg)
+        toast.error(msg)
         return
       }
 
-      const count = bulkAssignedCount(result.data ?? null)
+      const data = result.data ?? null
+      const count = bulkAssignedCount(data)
+      const skipped =
+        typeof data?.skipped === 'number' ? data.skipped : undefined
       const target = selectedDept?.name ?? 'the department'
+      const skipPhrase =
+        typeof skipped === 'number' && skipped > 0
+          ? ` ${skipped} skipped (already assigned this quiz).`
+          : ''
       toast.success(
         count > 0
-          ? `Assigned to ${count} user${count === 1 ? '' : 's'} in ${target}.`
-          : `Bulk assignment created for ${target}.`,
+          ? `Created ${count} assignment${count === 1 ? '' : 's'} in ${target}.${skipPhrase}`
+          : skipped != null && skipped > 0
+            ? `No new rows in ${target} — all targeted users already had this quiz.`
+            : `Bulk assignment created for ${target}.`,
       )
       handleOpenChange(false)
       router.refresh()

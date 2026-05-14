@@ -45,6 +45,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { resolvedCompanyStatsKpis } from '@/lib/company-assignment-stats'
+import { assignmentDisplaySop } from '@/lib/assignment-display'
 import { CreateAssignmentModal } from '@/components/modals/create-assignment-modal'
 import { BulkAssignDialog } from '@/components/admin/bulk-assign-dialog'
 import { SopViewButton } from '@/components/admin/sop-view-button'
@@ -146,15 +148,8 @@ function KpiCard({ title, value, icon: Icon, tone = 'default', subline, index = 
 
 function KpiRow({ stats }: { stats: CompanyAssignmentStats }) {
   const byStatus = stats.byStatus ?? {}
-  const overdue = stats.overduePending ?? byStatus.OVERDUE ?? 0
-  const lockouts = stats.lockouts ?? byStatus.LOCKED_OUT ?? 0
+  const k = resolvedCompanyStatsKpis(stats)
   const completed = byStatus.COMPLETED ?? 0
-  const passed = stats.passed ?? 0
-  const failed = stats.failed ?? 0
-  const avg =
-    typeof stats.averageScore === 'number'
-      ? `${Math.round(stats.averageScore * 10) / 10}%`
-      : '—'
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -172,29 +167,29 @@ function KpiRow({ stats }: { stats: CompanyAssignmentStats }) {
         icon={CheckCircle2Icon}
         tone="good"
         subline={
-          passed || failed
-            ? `${passed} passed · ${failed} failed`
+          k.passedCount || k.failedCount
+            ? `${k.passedCount} passed · ${k.failedCount} failed`
             : undefined
         }
       />
       <KpiCard
         index={2}
         title="Avg pass score"
-        value={avg}
+        value={k.avgAmongPassedDisplay}
         icon={TrendingUpIcon}
         tone="good"
       />
       <KpiCard
         index={3}
         title="Overdue (pending)"
-        value={overdue}
+        value={k.overduePendingCount}
         icon={ClockIcon}
         tone="warn"
       />
       <KpiCard
         index={4}
         title="Locked out"
-        value={lockouts}
+        value={k.lockedOutCount}
         icon={LockIcon}
         tone="bad"
       />
@@ -362,12 +357,10 @@ export default async function AssignmentsPage({
                 </TableHeader>
                 <TableBody>
                   {assignments.map((ass) => {
-                    const sopId =
-                      ass.sop?.id ?? ass.quiz?.sop?.id ?? ass.sopId ?? undefined
-                    const sopTitle =
-                      ass.sop?.title ?? ass.quiz?.sop?.title ?? '—'
-                    const sopVersion =
-                      ass.sop?.version ?? ass.quiz?.sop?.version
+                    const disp = assignmentDisplaySop(ass)
+                    const sopId = disp.sopId
+                    const sopTitle = disp.title
+                    const sopVersion = disp.version
                     const due = ass.dueDate ?? ass.deadline ?? null
                     const userId = ass.user?.id ?? ass.userId
 

@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 
 import { createAssignment, getUsers, getSOPs, getQuizzesBySOP } from '@/lib/actions/admin'
+import { formatAssignmentActionError } from '@/lib/assignment-display'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -95,8 +96,12 @@ export function CreateAssignmentModal({ trigger }: { trigger: React.ReactNode })
       })
 
       if (result.error) {
-        setServerError(result.error)
-        toast.error(result.error)
+        const msg = formatAssignmentActionError(
+          result.error,
+          result.errorCode,
+        )
+        setServerError(msg)
+        toast.error(msg)
         return
       }
 

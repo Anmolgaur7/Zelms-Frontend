@@ -171,6 +171,11 @@ export interface Assignment {
   userId: string
   sopId?: string
   quizId?: string
+  /** Phase 1 — frozen at assign time; prefer for audit/compliance display. */
+  assignedSopId?: string | null
+  assignedSopTitle?: string | null
+  assignedSopVersion?: string | null
+  assignedQuizDifficulty?: string | null
   status: AssignmentStatus
   dueDate?: string | null
   deadline?: string | null
@@ -217,13 +222,23 @@ export interface CompanyAssignmentStatsByStatus {
 export interface CompanyAssignmentStats {
   totalAssignments: number
   byStatus: CompanyAssignmentStatsByStatus
-  /** Convenience aliases that some backends include. */
+  /** §6a.1 — completed rows that passed. */
+  completedPassedCount?: number
+  /** §6a.1 — completed rows that failed. */
+  completedFailedCount?: number
+  /** §6a.1 — mean score among passed (0–100 integer per doc; may be ratio on older APIs). */
+  averageScoreAmongPassed?: number | null
+  /** §6a.1 — PENDING with deadline strictly before now. */
+  overduePendingCount?: number
+  /** §6a.1 — same idea as `byStatus.LOCKED_OUT` when provided explicitly. */
+  lockedOutCount?: number
+  traineesWithAssignments: number
+  /** Legacy aliases (pre–§6a naming). */
   passed?: number
   failed?: number
   averageScore?: number | null
   overduePending?: number
   lockouts?: number
-  traineesWithAssignments: number
 }
 
 export interface AssignmentListQuery {
@@ -255,6 +270,9 @@ export interface TraineeProfile {
 export interface TraineeSummary {
   byStatus: CompanyAssignmentStatsByStatus
   totalAssignments?: number
+  completedPassedCount?: number
+  completedFailedCount?: number
+  averageScoreAmongPassed?: number | null
   passed?: number
   failed?: number
   averageScore?: number | null

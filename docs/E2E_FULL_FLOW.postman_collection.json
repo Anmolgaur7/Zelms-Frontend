@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "e2e-full-klonix-001",
     "name": "E2E — Full flow (Klonixpharback)",
-    "description": "## Docs (read first)\\n- **Full route table:** `docs/API_ENDPOINTS.md`\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md` (includes **§6a** company assignment reports)\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **This collection:** `postman/E2E_POSTMAN_README.md`\\n\\n## Assignment admin APIs (folder **6**)\\nTenant **`companyToken`** only (`ADMIN` / `TRAINER` / `AUDITOR`). **6.0a** `GET /api/assignments/company/stats` — KPIs. **6.0b** `GET /api/assignments/company` — paginated list (`page`, `limit`, filters in request description). **6.0c** `GET /api/assignments/company/users/{{invitedUserId}}` — per-user summary + history; run after folder **4** sets **`invitedUserId`**. Platform token → **403** `TENANT_REQUIRED`.\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`, `TENANT_REQUIRED`, `SOP_DUPLICATE_TITLE_VERSION`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
+    "description": "## Docs (read first)\\n- **Full route table:** `docs/API_ENDPOINTS.md`\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md` (includes **§6a** company assignment reports)\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **Postman variables / run order:** `docs/E2E_POSTMAN_README.md`\\n\\n## Assignment admin APIs (folder **6**)\\nTenant **`companyToken`** only (`ADMIN` / `TRAINER` / `AUDITOR`). **6.0a** `GET /api/assignments/company/stats` — KPIs. **6.0b** `GET /api/assignments/company` — paginated list (`page`, `limit`, filters in request description). **6.0c** `GET /api/assignments/company/users/{{invitedUserId}}` — per-user summary + history; run after folder **4** sets **`invitedUserId`**. Platform token → **403** `TENANT_REQUIRED`.\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`, `TENANT_REQUIRED`, `SOP_DUPLICATE_TITLE_VERSION`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -117,7 +117,7 @@
     },
     {
       "name": "1 — Platform",
-      "description": "**1.1** `200` → `{ token, role, name }`. **1.2** `201` onboard → `{ companyId, superAdminId, licenseId, inviteLink, ... }`; Tests save `verificationToken` from `inviteLink`.",
+      "description": "**1.1** `200` → `{ token, role, name }`. **1.2** `201` onboard → `{ companyId, superAdminId, licenseId, inviteLink, ... }`; Tests save `verificationToken` from `inviteLink`. **1.3** `GET /api/platform/assignments` (Phase 3) — cross-tenant list; run after **1.1** (`platformToken`). `data` is empty until tenants have assignments (e.g. after folder **6**).",
       "item": [
         {
           "name": "1.1 Platform login",
@@ -206,6 +206,36 @@
                   "  if (m) pm.collectionVariables.set(\"verificationToken\", m[1]);",
                   "}",
                   "if (d.licenseId) console.log(\"Assigned licenseId:\", d.licenseId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 GET platform assignments (cross-tenant, Phase 3)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{platformToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/platform/assignments?page=1&limit=10",
+            "description": "**Phase 3.** Requires **`platformToken`** from **1.1**. Query params: `page`, `limit` (max 100), optional `companyId`, `status`, `userId`, `quizId`, `sopId`, `search`. Each list call appends a **platform** audit row (`PLATFORM_ASSIGNMENTS_QUERY`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 platform assignments\", function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json();",
+                  "pm.test(\"shape page limit total data\", function () {",
+                  "  pm.expect(d).to.have.keys(\"page\", \"limit\", \"total\", \"data\");",
+                  "  pm.expect(d.data).to.be.an(\"array\");",
+                  "});"
                 ]
               }
             }
@@ -543,7 +573,7 @@
     },
     {
       "name": "5 — SOPs & quizzes",
-      "description": "**5.2** upload sets **`sopId`**. **5.3** builds **`quizSubmitPayload`**. **5.5** study (`GET .../study`). **5.6** chat (`POST .../chat`). **5.7** signed file. **5.8–5.9** status (e-sign + password). **5.10** revise (new DRAFT). Re-running **5.2** with the same title+version returns **409** `SOP_DUPLICATE_TITLE_VERSION` unless you change version/title or archive/remove the old row. Need **`companyToken`**.",
+      "description": "**5.2** upload sets **`sopId`** (SOP is **DRAFT** — Phase 2). **5.2b** **ADMIN** publishes → **ACTIVE** (required before **6.1** assign). **5.3** builds **`quizSubmitPayload`**. **5.5** study. **5.6** chat. **5.7** signed file. **5.8–5.9** archive/re-activate. **5.10** revise (new DRAFT). Re-running **5.2** same title+version → **409** `SOP_DUPLICATE_TITLE_VERSION`. Need **`companyToken`**.",
       "item": [
         {
           "name": "5.1 List SOPs",
@@ -607,11 +637,41 @@
                 "type": "text/javascript",
                 "exec": [
                   "const d = pm.response.json();",
-                  "if (d.sopId) pm.collectionVariables.set(\"sopId\", d.sopId);"
+                  "if (d.sopId) pm.collectionVariables.set(\"sopId\", d.sopId);",
+                  "pm.test(\"upload is DRAFT until publish (Phase 2)\", function () {",
+                  "  pm.expect(d.status).to.eql(\"DRAFT\");",
+                  "});"
                 ]
               }
             }
           ]
+        },
+        {
+          "name": "5.2b Publish SOP (DRAFT → ACTIVE, e-sign)",
+          "request": {
+            "description": "**Phase 2:** New uploads are **DRAFT**. Only **ADMIN** / **SUPER_ADMIN** may set **ACTIVE** (trainers cannot). E2E super admin token works. Same password as **5.8** (`Admin@1234`). **Run before 6.1** or assign returns **409** `SOP_NOT_ASSIGNABLE`.",
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{companyToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sops/{{sopId}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"E2E Phase 2: release for training after document review in sandbox environment.\",\n  \"password\": \"Admin@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
           "name": "5.3 Get quizzes for SOP",
@@ -918,6 +978,7 @@
         {
           "name": "6.1 Assign quiz to invited user",
           "request": {
+            "description": "Requires SOP **ACTIVE**. Run **5.2b** after **5.2** (Phase 2: uploads are **DRAFT** until publish). If you ran **5.8** archive without **5.9** re-activate, expect **409** `SOP_NOT_ASSIGNABLE`. Response assignment includes `assignedSopId`, `assignedSopTitle`, `assignedSopVersion`, `assignedQuizDifficulty` when created.",
             "method": "POST",
             "header": [
               {
