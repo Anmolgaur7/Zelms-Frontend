@@ -5,54 +5,75 @@ const WORDMARK = '/mainlogo.png'
 
 type ZeavarWordmarkProps = {
   className?: string
-  /** Wheel + wordmark size preset */
-  size?: 'auth' | 'compact'
+  size?: 'auth' | 'compact' | 'hero'
 }
 
-/**
- * Full ZEAVAR mark: wheel (left) + wordmark (right), aligned like the brand lockup.
- * Wheel runs a single 360° spin on load (respects prefers-reduced-motion).
- */
-export function ZeavarWordmark({ className, size = 'auth' }: ZeavarWordmarkProps) {
-  const isAuth = size === 'auth'
+export function ZeavarWordmark({
+  className,
+  size = 'auth',
+}: ZeavarWordmarkProps) {
+  const wheelWrap = cn(
+    'relative flex shrink-0 items-center justify-center',
+
+    size === 'hero' &&
+      'h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48',      // was h-16/20/24 → 2×
+
+    size === 'auth' &&
+      'h-24 w-24 sm:h-28 sm:w-28',                         // was h-12/14 → 2×
+
+    size === 'compact' && 'h-16 w-16',                      // was h-8 → 2×
+  )
+
+  const wheelPx =
+    size === 'hero' ? 192 : size === 'auth' ? 112 : 64     // was 96 / 56 / 32 → 2×
+
+  const wordmark = cn(
+    'w-auto object-contain object-left',
+
+    size === 'hero' &&
+      'h-48 max-h-56 max-w-[min(96vw,1440px)] sm:h-56 sm:max-h-64 sm:max-w-[min(90vw,1720px)] lg:h-64 lg:max-h-72 lg:max-w-[min(60vw,2000px)]',
+    // was h-24/28/32 → 2×
+
+    size === 'auth' &&
+      'h-32 max-h-40 max-w-[min(90vw,960px)] sm:h-40 sm:max-h-48',
+    // was h-16/20 → 2×
+
+    size === 'compact' &&
+      'h-20 max-h-24 max-w-[600px]',
+    // was h-10/12 → 2×
+  )
 
   return (
     <div
       className={cn(
-        'flex items-center justify-center gap-1.5 sm:gap-2.5',
+        'flex items-center justify-center',
+        size === 'hero'
+          ? '-space-x-2 sm:-space-x-3 lg:-space-x-4'
+          : '-space-x-2',
         className,
       )}
       role="img"
       aria-label="ZEAVAR"
     >
-      <div
-        className={cn(
-          'relative flex shrink-0 items-center justify-center',
-          isAuth ? 'h-14 w-14 sm:h-[4.25rem] sm:w-[4.25rem]' : 'h-10 w-10',
-        )}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- public static assets */}
+      <div className={wheelWrap}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={WHEEL}
           alt=""
-          width={isAuth ? 68 : 40}
-          height={isAuth ? 68 : 40}
+          width={wheelPx}
+          height={wheelPx}
           className="h-full w-full object-contain motion-safe:animate-zeavar-wheel-once"
           aria-hidden
         />
       </div>
+
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={WORDMARK}
         alt="ZEAVAR"
-        width={280}
-        height={48}
-        className={cn(
-          'w-auto object-contain object-left',
-          isAuth
-            ? 'h-9 max-h-10 max-w-[min(72vw,280px)] sm:h-11 sm:max-h-12'
-            : 'h-7 max-h-8 max-w-[200px]',
-        )}
+        width={size === 'hero' ? 2000 : 960}
+        height={size === 'hero' ? 288 : 160}
+        className={wordmark}
       />
     </div>
   )
@@ -60,12 +81,15 @@ export function ZeavarWordmark({ className, size = 'auth' }: ZeavarWordmarkProps
 
 type ZeavarWheelProps = {
   className?: string
-  /** Single spin on mount */
   animate?: boolean
   alt: string
 }
 
-export function ZeavarWheel({ className, animate = true, alt }: ZeavarWheelProps) {
+export function ZeavarWheel({
+  className,
+  animate = true,
+  alt,
+}: ZeavarWheelProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

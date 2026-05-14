@@ -60,8 +60,8 @@ export default function SetPasswordPage() {
 
 function SetPasswordSkeleton() {
   return (
-    <Card className="shadow-lg border-border/50">
-      <CardHeader className="space-y-1 pb-4">
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="space-y-2 px-0 pb-4 pt-0">
         <CardTitle className="text-xl">Set Your Password</CardTitle>
         <CardDescription>Loading…</CardDescription>
       </CardHeader>
@@ -88,14 +88,14 @@ function SetPasswordForm() {
   // No invite token in URL — show error
   if (!inviteToken) {
     return (
-      <Card className="shadow-lg border-border/50">
-        <CardHeader>
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="px-0 pt-0">
           <CardTitle>Invalid Invite Link</CardTitle>
           <CardDescription>
             This link is missing or has expired. Contact your platform administrator.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="px-0">
           <Link href="/login" className="text-sm text-primary underline-offset-4 hover:underline">
             Back to login
           </Link>
@@ -107,15 +107,15 @@ function SetPasswordForm() {
   // Success state
   if (done) {
     return (
-      <Card className="shadow-lg border-border/50">
-        <CardHeader className="text-center space-y-3">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="space-y-3 px-0 pt-0 text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
           <CardTitle>Password Set!</CardTitle>
           <CardDescription>
             Your account is now active. Sign in with your company code and employee ID.
           </CardDescription>
         </CardHeader>
-        <CardFooter className="justify-center">
+        <CardFooter className="justify-center px-0">
           <Button asChild className="w-full">
             <Link href="/login">Go to Login</Link>
           </Button>
@@ -138,16 +138,16 @@ function SetPasswordForm() {
   }
 
   return (
-    <Card className="shadow-lg border-border/50">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Set Your Password</CardTitle>
-        <CardDescription>
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="space-y-2 px-0 pb-6 pt-0">
+        <CardTitle className="text-3xl font-bold tracking-tight">Set Your Password</CardTitle>
+        <CardDescription className="text-base leading-relaxed">
           Create a strong password to activate your administrator account
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-0">
           {serverError && (
             <div
               role="alert"
@@ -196,7 +196,7 @@ function SetPasswordForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="pt-2">
+        <CardFooter className="px-0 pt-2">
           <Button
             id="set-password-submit"
             type="submit"

@@ -27,7 +27,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Building2, IdCard, Lock, Loader2 } from 'lucide-react'
+import { AuthTrustBadges } from '@/components/auth/auth-trust-badges'
+import { ArrowRight, Building2, IdCard, Loader2, Lock } from 'lucide-react'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -57,10 +58,11 @@ export default function LoginPage() {
 
 function LoginSkeleton() {
   return (
-    <Card className="shadow-soft-lg border-border/50 backdrop-blur-sm bg-card/95">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Sign in</CardTitle>
-        <CardDescription>Loading…</CardDescription>
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="space-y-2 px-0 pb-2 pt-0">
+        <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-full max-w-sm animate-pulse rounded bg-muted" />
       </CardHeader>
     </Card>
   )
@@ -108,16 +110,19 @@ function LoginForm() {
   }
 
   return (
-    <Card className="shadow-soft-lg border-border/50 backdrop-blur-sm bg-card/95">
-      <CardHeader className="space-y-1 pb-4">
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>
-          Sign in with your company code and employee credentials.
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="space-y-2 px-0 pb-6 pt-0">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">
+          Employee portal
+        </p>
+        <CardTitle className="text-3xl font-bold tracking-tight">Welcome back</CardTitle>
+        <CardDescription className="text-base leading-relaxed">
+          Sign in with your company credentials to continue your training.
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-0 pb-2">
           {/* Server-level error banner */}
           {serverError && (
             <div
@@ -187,22 +192,26 @@ function LoginForm() {
           </div>
         </CardContent>
 
-        <CardFooter className="pt-2">
+        <CardFooter className="flex-col gap-0 px-0 pt-0">
           <Button
             id="tenant-login-submit"
             type="submit"
-            className="w-full"
+            className="group h-12 w-full gap-2 text-[0.9375rem] shadow-md shadow-primary/25 transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-lg hover:shadow-primary/30 active:translate-y-0"
             disabled={isPending}
           >
             {isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Signing in…
               </>
             ) : (
-              'Sign in'
+              <>
+                Sign in
+                <ArrowRight className="h-4 w-4 motion-safe:transition-transform group-hover:translate-x-0.5" />
+              </>
             )}
           </Button>
+          <AuthTrustBadges />
         </CardFooter>
       </form>
     </Card>

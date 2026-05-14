@@ -97,8 +97,8 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <Card className="shadow-lg border-border/50">
-      <CardHeader className="space-y-3 pb-4">
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="space-y-3 px-0 pb-4 pt-0">
         {/* Warning banner */}
         <div className="flex items-start gap-3 rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -106,14 +106,14 @@ export default function ChangePasswordPage() {
             Your account requires a password change before you can continue.
           </span>
         </div>
-        <CardTitle className="text-xl">Change Your Password</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-3xl font-bold tracking-tight">Change Your Password</CardTitle>
+        <CardDescription className="text-base leading-relaxed">
           Choose a strong password. You&apos;ll use it for all future logins.
         </CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-0">
           {serverError && (
             <div
               role="alert"
@@ -184,7 +184,7 @@ export default function ChangePasswordPage() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex-col gap-3 pt-2">
+        <CardFooter className="flex-col gap-3 px-0 pt-2">
           <Button
             id="change-password-submit"
             type="submit"
