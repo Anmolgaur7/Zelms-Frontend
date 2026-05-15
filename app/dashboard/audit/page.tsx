@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { ShieldCheckIcon } from 'lucide-react'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'Audit Log' }
 export const dynamic = 'force-dynamic'
@@ -58,16 +59,21 @@ export default async function AuditLogPage({
 
   const feed = await getAuditFeed({ page, limit })
 
-  return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Cryptographically chained record of every privileged action in your
-          tenant. Use the detail dialog to verify integrity.
-        </p>
-      </div>
+  const countDescription =
+    typeof feed.total === 'number'
+      ? `${feed.total.toLocaleString()} event${feed.total === 1 ? '' : 's'} in the log`
+      : `${feed.logs.length.toLocaleString()} event${feed.logs.length === 1 ? '' : 's'} on this page`
 
+  const countHint = `Page ${feed.page ?? page} · up to ${feed.limit ?? limit} per page`
+
+  return (
+    <CatalogPageLayout
+      guideId="audit"
+      showTrainingFlow={false}
+      countDescription={countDescription}
+      countHint={countHint}
+      helpDefaultOpen={feed.logs.length === 0}
+    >
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -85,6 +91,6 @@ export default async function AuditLogPage({
           </Suspense>
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }

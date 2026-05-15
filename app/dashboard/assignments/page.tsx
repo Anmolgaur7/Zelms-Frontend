@@ -53,6 +53,7 @@ import { SopViewButton } from '@/components/admin/sop-view-button'
 import { AssignmentFilters } from '@/components/admin/assignment-filters'
 import { PaginationBar } from '@/components/admin/pagination-bar'
 import { UnlockAssignmentDialog } from '@/components/admin/unlock-assignment-dialog'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 import type {
   AssignmentListQuery,
   AssignmentStatus,
@@ -218,53 +219,57 @@ export default async function AssignmentsPage({
     !!query.userId ||
     !!query.sopId ||
     !!query.quizId ||
-    !!query.overdueOnly
+    !!    query.overdueOnly
 
-  return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4 animate-fade-up motion-reduce:animate-none">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Training Assignments
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {typeof list.total === 'number'
-              ? `${list.total.toLocaleString()} total assignment${list.total === 1 ? '' : 's'}`
-              : `${assignments.length} on this page`}
-          </p>
-        </div>
-        {canMutateAssignments ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <BulkAssignDialog
-              trigger={
-                <Button size="sm" variant="outline">
-                  <UsersIcon className="mr-2 h-4 w-4" />
-                  Bulk assign
-                </Button>
-              }
-            />
-            <CreateAssignmentModal
-              trigger={
-                <Button size="sm">
-                  <UserPlusIcon className="mr-2 h-4 w-4" />
-                  Assign Training
-                </Button>
-              }
-            />
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled
-            title="Auditors cannot create assignments. Ask an admin or trainer."
-          >
-            <ClipboardCheckIcon className="mr-2 h-4 w-4" />
+  const countDescription =
+    typeof list.total === 'number'
+      ? `${list.total.toLocaleString()} total assignment${list.total === 1 ? '' : 's'}${hasFilters ? ', matching filters' : ''}`
+      : `${assignments.length} assignment${assignments.length === 1 ? '' : 's'} on this page`
+
+  const countHint =
+    typeof list.total === 'number' && assignments.length > 0
+      ? `Page ${query.page} · showing ${assignments.length} row${assignments.length === 1 ? '' : 's'}`
+      : undefined
+
+  const assignmentActions = canMutateAssignments ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <BulkAssignDialog
+        trigger={
+          <Button size="sm" variant="outline">
+            <UsersIcon className="mr-2 h-4 w-4" />
+            Bulk assign
+          </Button>
+        }
+      />
+      <CreateAssignmentModal
+        trigger={
+          <Button size="sm">
+            <UserPlusIcon className="mr-2 h-4 w-4" />
             Assign Training
           </Button>
-        )}
-      </div>
+        }
+      />
+    </div>
+  ) : (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled
+      title="Auditors cannot create assignments. Ask an admin or trainer."
+    >
+      <ClipboardCheckIcon className="mr-2 h-4 w-4" />
+      Assign Training
+    </Button>
+  )
 
+  return (
+    <CatalogPageLayout
+      guideId="assignments"
+      countDescription={countDescription}
+      countHint={countHint}
+      helpDefaultOpen={!error && assignments.length === 0 && !hasFilters}
+      action={assignmentActions}
+    >
       {/* KPI strip */}
       {stats ? (
         <KpiRow stats={stats} />
@@ -315,8 +320,8 @@ export default async function AssignmentsPage({
             Active Assignments
           </CardTitle>
           <CardDescription>
-            Tenant-wide list from <code>/api/assignments/company</code>. Click an
-            employee to open their dossier.
+            Line-by-line view of who owes which SOP quiz. Open a person to jump to their
+            dossier when you need to follow up or unlock.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -529,6 +534,6 @@ export default async function AssignmentsPage({
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }

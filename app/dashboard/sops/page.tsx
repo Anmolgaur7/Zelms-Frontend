@@ -38,6 +38,7 @@ import { SopStatusDialog } from '@/components/admin/sop-status-dialog'
 import { SopReviseDialog } from '@/components/admin/sop-revise-dialog'
 import { ManualQuizDialog } from '@/components/admin/manual-quiz-dialog'
 import { canUserActivateSop } from '@/lib/sop-errors'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'SOPs' }
 export const dynamic = 'force-dynamic'
@@ -100,15 +101,13 @@ export default async function SOPsPage({
   const hasFilters = !!params.search || !!status || !!params.category
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Standard Operating Procedures</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {sops.length} document{sops.length !== 1 ? 's' : ''}
-            {hasFilters ? ' match the current filters' : ' in the library'}
-          </p>
-        </div>
+    <CatalogPageLayout
+      guideId="sops"
+      count={sops.length}
+      countLabel="document"
+      countSuffix={hasFilters ? ' match the current filters' : ' in the library'}
+      helpDefaultOpen={sops.length === 0 && !hasFilters}
+      action={
         <CreateSOPModal
           trigger={
             <Button size="sm">
@@ -117,8 +116,8 @@ export default async function SOPsPage({
             </Button>
           }
         />
-      </div>
-
+      }
+    >
       {/* Next 15: useSearchParams() inside SopFilters must sit under Suspense */}
       <Suspense fallback={<FiltersFallback />}>
         <SopFilters categories={categories} />
@@ -247,6 +246,6 @@ export default async function SOPsPage({
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }

@@ -30,6 +30,7 @@ import { getSopDifficulty } from '@/lib/actions/analytics'
 import { normaliseDifficultyRows } from '@/types/analytics'
 import type { SopDifficultyRow } from '@/types/analytics'
 import { DifficultyChart } from '@/components/analytics/difficulty-chart'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'SOP Difficulty' }
 export const dynamic = 'force-dynamic'
@@ -123,16 +124,24 @@ export default async function SopDifficultyPage() {
     (e) => typeof e.rate === 'number' && e.rate < 70,
   ).length
 
-  return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">SOP difficulty</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Quiz pass rates and average scores per SOP. Lowest pass-rate is
-          listed first so you can prioritise content reviews.
-        </p>
-      </div>
+  const countDescription =
+    error != null
+      ? undefined
+      : `${enriched.length} SOP${enriched.length === 1 ? '' : 's'} with recorded quiz attempts`
 
+  const countHint =
+    error != null
+      ? undefined
+      : `${totalAttempts.toLocaleString()} total attempt${totalAttempts === 1 ? '' : 's'} · average pass ${fmtPct(averagePassRate)} · ${hardCount} difficult (pass below 70%)`
+
+  return (
+    <CatalogPageLayout
+      guideId="sop-difficulty"
+      showTrainingFlow={false}
+      countDescription={countDescription}
+      countHint={countHint}
+      helpDefaultOpen={!!error || enriched.length === 0}
+    >
       {error ? (
         <Card className="border-destructive/30">
           <CardHeader className="pb-2">
@@ -245,7 +254,7 @@ export default async function SopDifficultyPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }
 

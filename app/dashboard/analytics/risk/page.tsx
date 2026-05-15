@@ -31,6 +31,7 @@ import { getSession } from '@/lib/session'
 import { getRiskReport } from '@/lib/actions/analytics'
 import { normaliseRiskUsers } from '@/types/analytics'
 import type { RiskUser } from '@/types/analytics'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'Risk Report' }
 export const dynamic = 'force-dynamic'
@@ -100,16 +101,23 @@ export default async function RiskPage() {
     lockouts: ranked.reduce((sum, u) => sum + (u.lockouts ?? 0), 0),
   }
 
-  return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Risk report</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Trainees most likely to be out of compliance. Sorted by descending
-          risk score.
-        </p>
-      </div>
+  const countDescription =
+    error != null
+      ? undefined
+      : `${ranked.length} trainee${ranked.length === 1 ? '' : 's'} on the risk list`
 
+  return (
+    <CatalogPageLayout
+      guideId="risk"
+      showTrainingFlow={false}
+      countDescription={countDescription}
+      countHint={
+        error
+          ? undefined
+          : `${counts.critical + counts.high} flagged high or critical · ${counts.overdue.toLocaleString()} overdue items · ${counts.lockouts.toLocaleString()} lockout${counts.lockouts === 1 ? '' : 's'}`
+      }
+      helpDefaultOpen={!!error || ranked.length === 0}
+    >
       {error ? (
         <Card className="border-destructive/30">
           <CardHeader className="pb-2">
@@ -241,11 +249,9 @@ export default async function RiskPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }
-
-// ─── Simple stat tile ─────────────────────────────────────────────────────────
 
 function SimpleStat({
   title,

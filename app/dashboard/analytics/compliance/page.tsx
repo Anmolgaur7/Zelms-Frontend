@@ -40,6 +40,7 @@ import {
 } from '@/types/analytics'
 import { ComplianceChart } from '@/components/analytics/compliance-chart'
 import { ExportTrainingReportButton } from '@/components/analytics/export-training-report-button'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'Compliance Report' }
 export const dynamic = 'force-dynamic'
@@ -99,24 +100,31 @@ export default async function CompliancePage() {
     }
   })
 
-  return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 animate-fade-up motion-reduce:animate-none">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Compliance report
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Live training compliance across every department and SOP.
-          </p>
-        </div>
-        {(session.role === 'ADMIN' ||
-          session.role === 'SUPER_ADMIN' ||
-          session.role === 'AUDITOR') && (
-          <ExportTrainingReportButton />
-        )}
-      </div>
+  const exportAction =
+    session.role === 'ADMIN' ||
+    session.role === 'SUPER_ADMIN' ||
+    session.role === 'AUDITOR' ? (
+      <ExportTrainingReportButton />
+    ) : null
 
+  const countDescription =
+    error != null
+      ? undefined
+      : `${(report?.totalAssignments ?? 0).toLocaleString()} assignments in scope · ${departments.length} department${departments.length === 1 ? '' : 's'} · ${sops.length} SOP${sops.length === 1 ? '' : 's'}`
+
+  return (
+    <CatalogPageLayout
+      guideId="compliance"
+      showTrainingFlow={false}
+      countDescription={countDescription}
+      countHint={
+        error
+          ? undefined
+          : `Overall completion rate ${pctFmt(overall)} (all assignments in this report)`
+      }
+      helpDefaultOpen={!!error || (report?.totalAssignments ?? 0) === 0}
+      action={exportAction ?? undefined}
+    >
       {error ? (
         <Card className="border-destructive/30">
           <CardHeader className="pb-2">
@@ -242,7 +250,7 @@ export default async function CompliancePage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }
 

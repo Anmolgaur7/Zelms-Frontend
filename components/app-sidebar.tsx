@@ -32,6 +32,7 @@ import {
   CalendarRangeIcon,
   BriefcaseIcon,
   BadgeCheckIcon,
+  MapIcon,
 } from 'lucide-react'
 
 import { ZeavarWheel } from '@/components/brand/zeavar-mark'
@@ -89,6 +90,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: BuildingIcon,
     roles: ['SUPER_ADMIN', 'ADMIN'],
     section: 'Organization',
+  },
+  {
+    title: 'Start here',
+    url: '/dashboard/training-setup',
+    icon: MapIcon,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'TRAINER', 'AUDITOR'],
+    section: 'Content & training',
   },
   {
     title: 'SOPs',

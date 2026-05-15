@@ -27,6 +27,7 @@ import {
 import { PlusIcon, UsersIcon, UploadIcon, ShieldCheckIcon } from 'lucide-react'
 import { CreateUserModal } from '@/components/modals/create-user-modal'
 import { UserRoleDialog } from '@/components/admin/user-role-dialog'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'Users' }
 
@@ -54,15 +55,13 @@ export default async function UsersPage() {
   const isActorSuperAdmin = actorRole === 'SUPER_ADMIN'
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {users.length} account{users.length !== 1 ? 's' : ''} in your organisation
-          </p>
-        </div>
+    <CatalogPageLayout
+      guideId="users"
+      showTrainingFlow={false}
+      count={users.length}
+      countLabel="account"
+      helpDefaultOpen={users.length === 0}
+      action={
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href="/dashboard/users/bulk">
@@ -79,9 +78,8 @@ export default async function UsersPage() {
             }
           />
         </div>
-      </div>
-
-      {/* Table */}
+      }
+    >
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -212,6 +210,6 @@ export default async function UsersPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </CatalogPageLayout>
   )
 }

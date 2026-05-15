@@ -31,6 +31,7 @@ import {
   ActivityIcon,
   TargetIcon,
   Building2Icon,
+  MapIcon,
 } from 'lucide-react'
 import {
   Card,
@@ -584,6 +585,23 @@ export default async function DashboardPage() {
                 }
               />
             </>
+          )}
+
+          {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN' || session.role === 'TRAINER' || session.role === 'AUDITOR') && (
+            <Link
+              href="/dashboard/training-setup"
+              className="group flex items-start text-left gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-soft-md w-full"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 ring-1 ring-inset ring-primary/20">
+                <MapIcon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <div className="text-sm font-medium">Start here</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Map of SOPs → courses → groups & more
+                </div>
+              </div>
+            </Link>
           )}
 
           {(session.role === 'ADMIN' || session.role === 'SUPER_ADMIN' || session.role === 'TRAINER') && (

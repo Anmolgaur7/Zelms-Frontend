@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { BuildingIcon, AlertCircleIcon } from 'lucide-react'
+import { CatalogPageLayout } from '@/components/phase3/catalog-page-layout'
 
 export const metadata = { title: 'Company' }
 
@@ -33,13 +34,7 @@ export default async function CompanySettingsPage() {
 
   if (!company) {
     return (
-      <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Company settings</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage branding, identifiers, and platform-issued metadata.
-          </p>
-        </div>
+      <CatalogPageLayout guideId="company" showTrainingFlow={false} helpDefaultOpen>
         <Card>
           <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center text-muted-foreground">
             <AlertCircleIcon className="h-8 w-8 opacity-40" />
@@ -50,19 +45,18 @@ export default async function CompanySettingsPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </CatalogPageLayout>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Company settings</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Branding shown across login, dashboards, and certificate PDFs.
-        </p>
-      </div>
-
+    <CatalogPageLayout
+      guideId="company"
+      showTrainingFlow={false}
+      countDescription={
+        company.name ? `Tenant profile: ${company.name}` : 'Company profile loaded'
+      }
+    >
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -99,6 +93,6 @@ export default async function CompanySettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </CatalogPageLayout>
   )
 }

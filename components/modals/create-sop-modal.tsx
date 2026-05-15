@@ -27,7 +27,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 
 import { createSOP, getQuizzesBySOP } from '@/lib/actions/admin'
-import { formatSopUploadError } from '@/lib/sop-errors'
+import { formatSopUploadError, getSopUploadErrorHint } from '@/lib/sop-errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -215,6 +215,8 @@ export function CreateSOPModal({ trigger }: { trigger: React.ReactNode }) {
 
   // ─── Render ────────────────────────────────────────────────────────────
 
+  const uploadErrorHint = serverError ? getSopUploadErrorHint(serverError) : null
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -269,11 +271,16 @@ export function CreateSOPModal({ trigger }: { trigger: React.ReactNode }) {
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-4 pt-2 animate-fade-up motion-reduce:animate-none"
           >
-            {serverError && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">
-                {serverError}
+            {serverError ? (
+              <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm space-y-2">
+                <p className="text-destructive font-medium">{serverError}</p>
+                {uploadErrorHint ? (
+                  <p className="text-xs text-destructive/90 leading-relaxed border-t border-destructive/20 pt-2">
+                    {uploadErrorHint}
+                  </p>
+                ) : null}
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-1.5">
               <Label htmlFor="sop-title">
