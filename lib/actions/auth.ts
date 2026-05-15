@@ -4,7 +4,7 @@
  * lib/actions/auth.ts
  *
  * Server Actions for tenant authentication flows only.
- * NOTE: Platform admin panel is a SEPARATE application — no platform routes here.
+ * Platform login: POST /api/platform/login (PLATFORM_ADMIN → /platform/*)
  *
  *  - Tenant login: { organization, employeeId, password }
  *  - set-password: POST /api/auth/set-password { token, password }  (invite UUID)
@@ -95,7 +95,7 @@ async function setAuthCookies(
   const cookieStore = await cookies()
 
   const session: SessionUser = {
-    name: response.name,
+    name: response.name?.trim() || 'User',
     role: response.role,
     employeeId: response.employeeId,
     email: response.email ?? null,
@@ -116,6 +116,26 @@ async function setAuthCookies(
  * Tenant employee / admin login.
  * Fields: organization (prefix or licenseId), employeeId, password.
  */
+export interface PlatformLoginBody {
+  identifier: string
+  password: string
+}
+
+export async function platformLogin(
+  body: PlatformLoginBody,
+): Promise<ActionResult> {
+  try {
+    const data = await backendPost<LoginResponse>('/api/platform/login', body)
+    await setAuthCookies(data)
+    return {}
+  } catch (e) {
+    if (e instanceof ApiError) {
+      return { error: e.message, errorCode: e.errorCode, requestId: e.requestId }
+    }
+    return { error: 'Platform login failed.' }
+  }
+}
+
 export async function tenantLogin(
   body: TenantLoginBody,
 ): Promise<ActionResult> {
@@ -177,7 +197,14 @@ export async function changePassword(
  */
 export async function logout(): Promise<never> {
   const cookieStore = await cookies()
+  const raw = cookieStore.get('pharma_session')?.value
+  let role: string | undefined
+  try {
+    if (raw) role = (JSON.parse(raw) as SessionUser).role
+  } catch {
+    /* ignore */
+  }
   cookieStore.delete('pharma_token')
   cookieStore.delete('pharma_session')
-  redirect('/login')
+  redirect(role === 'PLATFORM_ADMIN' ? '/platform-login' : '/login')
 }

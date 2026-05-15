@@ -348,6 +348,7 @@ export default async function AssignmentsPage({
                   <TableRow>
                     <TableHead>Employee</TableHead>
                     <TableHead>SOP</TableHead>
+                    <TableHead>Difficulty</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Due</TableHead>
@@ -400,6 +401,10 @@ export default async function AssignmentsPage({
                               </span>
                             )}
                           </div>
+                        </TableCell>
+
+                        <TableCell className="text-sm text-muted-foreground">
+                          {ass.assignedQuizDifficulty ?? '—'}
                         </TableCell>
 
                         <TableCell>

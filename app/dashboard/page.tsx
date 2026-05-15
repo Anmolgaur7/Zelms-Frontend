@@ -537,7 +537,8 @@ export default async function DashboardPage() {
       {/* Page heading */}
       <div className="animate-fade-up motion-reduce:animate-none">
         <h1 className="text-3xl font-semibold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
-          Welcome back, {session?.name?.split(' ')[0]}
+          Welcome back,{' '}
+          {session.name?.trim().split(/\s+/)[0] ?? 'there'}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Here&apos;s an overview of your pharma training operations.

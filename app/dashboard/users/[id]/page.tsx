@@ -319,6 +319,7 @@ export default async function TraineeDossierPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>SOP</TableHead>
+                    <TableHead>Difficulty</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Due</TableHead>
@@ -345,6 +346,9 @@ export default async function TraineeDossierPage({
                               </span>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {ass.assignedQuizDifficulty ?? '—'}
                         </TableCell>
                         <TableCell>
                           <span

@@ -44,6 +44,8 @@ interface Props {
   sopId: string
   sopTitle: string
   currentStatus: SopStatus | null | undefined
+  /** When false, ACTIVE is hidden (TRAINER cannot publish — Phase 2). */
+  canActivate?: boolean
   trigger: React.ReactNode
 }
 
@@ -51,6 +53,7 @@ export function SopStatusDialog({
   sopId,
   sopTitle,
   currentStatus,
+  canActivate = true,
   trigger,
 }: Props) {
   const router = useRouter()
@@ -89,7 +92,9 @@ export function SopStatusDialog({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SOP_STATUS_VALUES.map((s) => (
+              {SOP_STATUS_VALUES.filter(
+                (s) => s !== 'ACTIVE' || canActivate || currentStatus === 'ACTIVE',
+              ).map((s) => (
                 <SelectItem key={s} value={s}>
                   {STATUS_LABELS[s]}
                 </SelectItem>

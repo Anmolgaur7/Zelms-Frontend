@@ -1,6 +1,11 @@
 // ─── Role ────────────────────────────────────────────────────────────────────
-// NOTE: PLATFORM_ADMIN logs into a separate admin panel app — not this frontend.
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'TRAINER' | 'EMPLOYEE' | 'AUDITOR'
+export type UserRole =
+  | 'PLATFORM_ADMIN'
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'TRAINER'
+  | 'EMPLOYEE'
+  | 'AUDITOR'
 
 // ─── Session (stored in httpOnly cookie, used by middleware + server) ─────────
 export interface SessionUser {

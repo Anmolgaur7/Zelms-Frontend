@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "e2e-full-klonix-001",
     "name": "E2E — Full flow (Klonixpharback)",
-    "description": "## Docs (read first)\\n- **Full route table:** `docs/API_ENDPOINTS.md`\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md` (includes **§6a** company assignment reports)\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **Postman variables / run order:** `docs/E2E_POSTMAN_README.md`\\n\\n## Assignment admin APIs (folder **6**)\\nTenant **`companyToken`** only (`ADMIN` / `TRAINER` / `AUDITOR`). **6.0a** `GET /api/assignments/company/stats` — KPIs. **6.0b** `GET /api/assignments/company` — paginated list (`page`, `limit`, filters in request description). **6.0c** `GET /api/assignments/company/users/{{invitedUserId}}` — per-user summary + history; run after folder **4** sets **`invitedUserId`**. Platform token → **403** `TENANT_REQUIRED`.\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`, `TENANT_REQUIRED`, `SOP_DUPLICATE_TITLE_VERSION`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
+    "description": "## Docs (read first)\\n- **Full route table:** `docs/API_ENDPOINTS.md`\\n- **Frontend integration:** `docs/FRONTEND_INTEGRATION.md` (includes **§6a** company assignment reports)\\n- **AI prompt for UI work:** `docs/FRONTEND_AI_PROMPT.md`\\n- **This collection:** `postman/E2E_POSTMAN_README.md`\\n\\n## Assignment admin APIs (folder **6**)\\nTenant **`companyToken`** only (`ADMIN` / `TRAINER` / `AUDITOR`). **6.0a** `GET /api/assignments/company/stats` — KPIs. **6.0b** `GET /api/assignments/company` — paginated list (`page`, `limit`, filters in request description). **6.0c** `GET /api/assignments/company/users/{{invitedUserId}}` — per-user summary + history; run after folder **4** sets **`invitedUserId`**. Platform token → **403** `TENANT_REQUIRED`.\\n\\n## Errors (typical JSON)\\n`{ \\\"message\\\": string, \\\"errorCode\\\": string, \\\"details\\\"?: unknown }` — branch UI on **errorCode** (e.g. `VALIDATION_ERROR`, `AUTH_INVALID_CREDENTIALS`, `MUST_CHANGE_PASSWORD`, `USER_EMPLOYEE_ID_EXISTS`, `TENANT_REQUIRED`, `SOP_DUPLICATE_TITLE_VERSION`).\\n\\n## Auth quick reference\\n- **Tenant login:** `POST /api/auth/login` body `{ \\\"organization\\\", \\\"employeeId\\\", \\\"password\\\" }` → `{ token, role, name, employeeId, email?, companyName, mustChangePassword }`.\\n- **Platform login:** `POST /api/platform/login` `{ \\\"identifier\\\", \\\"password\\\" }` → `{ token, role: PLATFORM_ADMIN, name }`.\\n- **Protected calls:** header `Authorization: Bearer <token>`.\\n\\n## Onboarding\\n- **Super admin (1.2):** invite link + `POST /api/auth/set-password` (token in URL/body).\\n- **Other users (4.2 / 4.0):** no email required; `temporaryPassword` in response; after login call `POST /api/auth/change-password` if `mustChangePassword` is true.\\n\\n## Variables\\nSet **baseUrl**. **1.2** prerequest fills `e2ePrefix` + `e2eAdminEmail` only when both are blank. See README for full variable table.\\n\\nRun folders **0→9** in order for full E2E.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -234,6 +234,65 @@
                   "const d = pm.response.json();",
                   "pm.test(\"shape page limit total data\", function () {",
                   "  pm.expect(d).to.have.keys(\"page\", \"limit\", \"total\", \"data\");",
+                  "  pm.expect(d.data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 GET platform assignment stats (Phase 3 KPI)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{platformToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/platform/assignments/stats",
+            "description": "**Phase 3 (KPI):** platform-wide assignment stats (cross-tenant). Optional query `companyId` to narrow to a tenant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 platform assignments stats\", function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json();",
+                  "pm.test(\"shape stats\", function () {",
+                  "  pm.expect(d).to.have.keys(\"totalAssignments\", \"byStatus\", \"completedPassedCount\", \"completedFailedCount\", \"averageScoreAmongPassed\", \"overduePendingCount\", \"lockedOutCount\", \"traineesWithAssignments\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 GET per-company assignment stats (Phase 3 support view)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{platformToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/platform/companies/assignment-stats?page=1&limit=10",
+            "description": "**Phase 3 (support):** per-company assignment KPIs. Optional query `companyStatus` (ACTIVE|SUSPENDED|TERMINATED)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 per-company assignment stats\", function () { pm.response.to.have.status(200); });",
+                  "const d = pm.response.json();",
+                  "pm.test(\"shape page limit totalCompanies data\", function () {",
+                  "  pm.expect(d).to.have.keys(\"page\", \"limit\", \"totalCompanies\", \"data\");",
                   "  pm.expect(d.data).to.be.an(\"array\");",
                   "});"
                 ]

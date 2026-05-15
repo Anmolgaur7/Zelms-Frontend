@@ -7,6 +7,7 @@
  */
 
 import { api, ApiError } from '@/lib/api'
+import { QUIET_TENANT_READ } from '@/lib/api-quiet'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/types/auth'
 import type {
@@ -38,8 +39,11 @@ import type { UserRole } from '@/types/auth'
 
 export async function getUsers(): Promise<AdminUser[]> {
   try {
-    const data = await api.get<AdminUser[] | { users: AdminUser[] }>('/api/admin/users')
-    // Handle both array and wrapped shapes
+    const data = await api.get<AdminUser[] | { users: AdminUser[] }>(
+      '/api/admin/users',
+      QUIET_TENANT_READ,
+    )
+    if (data == null) return []
     return Array.isArray(data) ? data : (data as { users: AdminUser[] }).users ?? []
   } catch {
     return []
@@ -78,7 +82,9 @@ export async function getDepartments(): Promise<Department[]> {
   try {
     const data = await api.get<Department[] | { departments: Department[] }>(
       '/api/admin/departments',
+      QUIET_TENANT_READ,
     )
+    if (data == null) return []
     return Array.isArray(data) ? data : (data as { departments: Department[] }).departments ?? []
   } catch {
     return []
@@ -102,8 +108,14 @@ export async function createDepartment(
 
 export async function getCompany(): Promise<Company | null> {
   try {
-    return await api.get<Company>('/api/admin/company')
+    return await api.get<Company>('/api/admin/company', QUIET_TENANT_READ)
   } catch (e) {
+    if (
+      e instanceof ApiError &&
+      (e.errorCode === 'NO_COMPANY' || e.errorCode === 'TENANT_REQUIRED')
+    ) {
+      return null
+    }
     console.error('[admin.getCompany]', e)
     return null
   }
@@ -151,7 +163,11 @@ export async function getAuditFeed(
   try {
     const raw = await api.get<unknown>(
       `/api/audit/company?page=${page}&limit=${limit}`,
+      QUIET_TENANT_READ,
     )
+    if (raw == null) {
+      return { logs: [], page, limit, total: 0 }
+    }
     if (Array.isArray(raw)) {
       return { logs: raw as AuditLogEntry[], page, limit, total: raw.length }
     }
@@ -171,8 +187,7 @@ export async function getAuditFeed(
       }
     }
     return { logs: [], page, limit, total: 0 }
-  } catch (e) {
-    console.error('[admin.getAuditFeed]', e)
+  } catch {
     return { logs: [], page, limit, total: 0 }
   }
 }
@@ -217,7 +232,9 @@ export async function getSOPs(opts?: SopListQuery): Promise<SOP[]> {
   try {
     const data = await api.get<SOP[] | { sops: SOP[] }>(
       `/api/sops/${buildSopQuery(opts)}`,
+      QUIET_TENANT_READ,
     )
+    if (data == null) return []
     return Array.isArray(data) ? data : (data as { sops: SOP[] }).sops ?? []
   } catch {
     return []
@@ -231,7 +248,11 @@ export async function getSOPs(opts?: SopListQuery): Promise<SOP[]> {
  */
 export async function getSopCategories(): Promise<string[]> {
   try {
-    const data = await api.get<SOP[] | { sops: SOP[] }>('/api/sops/')
+    const data = await api.get<SOP[] | { sops: SOP[] }>(
+      '/api/sops/',
+      QUIET_TENANT_READ,
+    )
+    if (data == null) return []
     const list = Array.isArray(data)
       ? data
       : (data as { sops: SOP[] }).sops ?? []
@@ -489,7 +510,18 @@ export async function getCompanyAssignmentStats(): Promise<{
 }> {
   const path = '/api/assignments/company/stats'
   try {
-    const raw = await api.get<CompanyAssignmentStats>(path)
+    const raw = await api.get<CompanyAssignmentStats>(path, QUIET_TENANT_READ)
+    if (raw == null) {
+      return {
+        stats: null,
+        error: {
+          path,
+          message: 'Assignment stats unavailable for this session.',
+          code: 'FORBIDDEN',
+          status: 403,
+        },
+      }
+    }
     return { stats: raw, error: null }
   } catch (e) {
     console.error('[admin.getCompanyAssignmentStats]', e)

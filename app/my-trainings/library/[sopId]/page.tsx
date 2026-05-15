@@ -67,10 +67,16 @@ export default async function LibrarySopPage({ params }: PageProps) {
     refreshSopSignedUrl(sopId),
   ])
 
-  const pdfSrc = resolvePdfSrc({
-    sopDisplayUrl: signed.sopDisplayUrl ?? sop.sopDisplayUrl ?? null,
-    fileUrl: sop.fileUrl ?? null,
-  })
+  const blocked =
+    signed.accessError?.code === 'SOP_NOT_ACCESSIBLE' ||
+    studyResult.error?.code === 'SOP_NOT_ACCESSIBLE'
+
+  const pdfSrc = blocked
+    ? null
+    : resolvePdfSrc({
+        sopDisplayUrl: signed.sopDisplayUrl ?? sop.sopDisplayUrl ?? null,
+        fileUrl: sop.fileUrl ?? null,
+      })
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 max-w-6xl mx-auto w-full">
@@ -99,6 +105,23 @@ export default async function LibrarySopPage({ params }: PageProps) {
           <p className="text-muted-foreground max-w-3xl">{sop.description}</p>
         )}
       </div>
+
+      {blocked ? (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="flex items-start gap-3 py-6">
+            <AlertCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+            <div className="space-y-1 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">
+                This procedure is not available for study yet
+              </p>
+              <p className="text-amber-800/90 dark:text-amber-300/90">
+                Only published (ACTIVE) SOPs can be opened. Ask your trainer or
+                admin when this document will be published.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Tabs defaultValue="document" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-3">

@@ -52,12 +52,15 @@ const ROLE_LABELS: Record<string, string> = {
   TRAINER: 'Trainer',
   EMPLOYEE: 'Employee',
   AUDITOR: 'Auditor',
+  PLATFORM_ADMIN: 'Platform',
 }
 
 /** Get initials from a name */
-function initials(name: string): string {
-  return name
-    .split(' ')
+function initials(name: string | undefined | null): string {
+  const trimmed = (name ?? '').trim()
+  if (!trimmed) return 'U'
+  return trimmed
+    .split(/\s+/)
     .map((w) => w[0])
     .join('')
     .toUpperCase()
@@ -76,6 +79,8 @@ export function NavUser({ session }: { session: SessionUser }) {
   }
 
   const displaySub = session.employeeId ?? session.email ?? ROLE_LABELS[session.role]
+  const displayName =
+    session.name?.trim() || ROLE_LABELS[session.role] || 'User'
 
   return (
     <SidebarMenu>
@@ -88,11 +93,11 @@ export function NavUser({ session }: { session: SessionUser }) {
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                  {initials(session.name)}
+                  {initials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{session.name}</span>
+                <span className="truncate font-medium">{displayName}</span>
                 <span className="truncate text-xs text-muted-foreground">
                   {displaySub}
                 </span>

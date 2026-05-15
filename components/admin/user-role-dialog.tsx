@@ -49,6 +49,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   TRAINER: 'Trainer',
   ADMIN: 'Admin',
   SUPER_ADMIN: 'Super admin',
+  PLATFORM_ADMIN: 'Platform admin',
 }
 
 const schema = z.object({

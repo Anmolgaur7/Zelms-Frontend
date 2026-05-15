@@ -24,11 +24,14 @@ export default async function DashboardLayout({
 }) {
   const session = await getSession()
 
-  // Extra safety net (middleware should catch this first)
   if (!session) redirect('/login')
 
-  // Fetch tenant branding in parallel — null-safe so the sidebar still renders
-  // for roles that can't reach /api/admin/company (e.g. EMPLOYEE).
+  // Platform tokens have no tenant companyId — use /platform/* instead.
+  if (session.role === 'PLATFORM_ADMIN') {
+    redirect('/platform/assignments')
+  }
+
+  // Branding is optional; NO_COMPANY must not break the shell (sidebar uses session.companyName).
   const company = await getCompany()
 
   return (
@@ -42,7 +45,7 @@ export default async function DashboardLayout({
       <SidebarInset className="bg-app-shell">
         <SiteHeader session={session} />
         <div
-          key={session.id}
+          key={session.employeeId ?? session.name}
           className="flex flex-1 flex-col animate-fade-up motion-reduce:animate-none"
         >
           {children}

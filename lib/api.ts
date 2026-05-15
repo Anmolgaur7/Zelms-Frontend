@@ -10,6 +10,7 @@
  */
 
 import { cookies } from 'next/headers'
+import { normalizeApiErrorMessage } from '@/lib/api-errors'
 
 export const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'https://klonixpharback.onrender.com'
@@ -67,17 +68,30 @@ function mergeHeaders(
   return { ...out, ...(extra as Record<string, string>) }
 }
 
+export type ApiRequestOptions = RequestInit & {
+  /** Skip dev console.error for expected error codes (optional / soft-fail fetches). */
+  suppressLogFor?: string[]
+  /** Skip dev console.error for these HTTP statuses (e.g. 403 on optional KPI calls). */
+  suppressLogForStatus?: number[]
+  /**
+   * When true, failed responses return `null` instead of throwing ApiError.
+   * Use for optional dashboard reads so Next.js dev does not show a runtime overlay.
+   */
+  softFail?: boolean
+}
+
 async function serverRequest<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
   /** Pass an explicit token to override the cookie (e.g. when changing password). */
   explicitToken?: string,
 ): Promise<T> {
+  const { suppressLogFor, suppressLogForStatus, softFail, ...fetchInit } = options
   const cookieStore = await cookies()
   const token = explicitToken ?? cookieStore.get('pharma_token')?.value
 
   // Don't override Content-Type for FormData bodies (let browser set boundary).
-  const isFormData = options.body instanceof FormData
+  const isFormData = fetchInit.body instanceof FormData
   const baseHeaders: Record<string, string> = isFormData
     ? {}
     : { 'Content-Type': 'application/json' }
@@ -87,16 +101,16 @@ async function serverRequest<T>(
   }
 
   const outboundId = newRequestId()
-  const merged = mergeHeaders(baseHeaders, options.headers)
+  const merged = mergeHeaders(baseHeaders, fetchInit.headers)
   if (!merged['X-Request-ID'] && !merged['x-request-id']) {
     merged['X-Request-ID'] = outboundId
   }
   const sentRequestId = merged['X-Request-ID'] ?? merged['x-request-id'] ?? outboundId
 
-  const method = (options.method ?? 'GET').toUpperCase()
+  const method = (fetchInit.method ?? 'GET').toUpperCase()
 
   const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchInit,
     headers: merged,
     cache: 'no-store',
   })
@@ -119,24 +133,42 @@ async function serverRequest<T>(
     const err = (data && typeof data === 'object'
       ? data
       : {}) as { message?: string; errorCode?: string; details?: unknown }
-    const message =
+    const rawMessage =
       typeof err.message === 'string'
         ? err.message
         : typeof data === 'string' && data
           ? data
           : `HTTP ${res.status}`
-    const errorCode =
+    const rawCode =
       typeof err.errorCode === 'string' ? err.errorCode : 'UNKNOWN_ERROR'
-
-    console.error(
-      '[api]',
+    const normalized = normalizeApiErrorMessage(
+      rawMessage,
+      res.status,
       method,
       path,
-      res.status,
-      errorCode,
-      responseRequestId,
-      message,
+      rawCode,
     )
+    const message = normalized.message
+    const errorCode = normalized.errorCode
+
+    const quiet =
+      suppressLogFor?.includes(errorCode) ||
+      suppressLogForStatus?.includes(res.status) === true
+    if (!quiet) {
+      console.error(
+        '[api]',
+        method,
+        path,
+        res.status,
+        errorCode,
+        responseRequestId,
+        message,
+      )
+    }
+
+    if (softFail) {
+      return null as T
+    }
 
     throw new ApiError(message, errorCode, res.status, err.details, responseRequestId)
   }
@@ -146,31 +178,31 @@ async function serverRequest<T>(
 
 // ─── Public API object ────────────────────────────────────────────────────────
 export const api = {
-  get: <T>(path: string, options?: RequestInit) =>
+  get: <T>(path: string, options?: ApiRequestOptions) =>
     serverRequest<T>(path, { ...options, method: 'GET' }),
 
-  post: <T>(path: string, body: unknown, options?: RequestInit) =>
+  post: <T>(path: string, body: unknown, options?: ApiRequestOptions) =>
     serverRequest<T>(path, {
       ...options,
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
-  put: <T>(path: string, body: unknown, options?: RequestInit) =>
+  put: <T>(path: string, body: unknown, options?: ApiRequestOptions) =>
     serverRequest<T>(path, {
       ...options,
       method: 'PUT',
       body: JSON.stringify(body),
     }),
 
-  patch: <T>(path: string, body: unknown, options?: RequestInit) =>
+  patch: <T>(path: string, body: unknown, options?: ApiRequestOptions) =>
     serverRequest<T>(path, {
       ...options,
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
 
-  delete: <T>(path: string, options?: RequestInit) =>
+  delete: <T>(path: string, options?: ApiRequestOptions) =>
     serverRequest<T>(path, { ...options, method: 'DELETE' }),
 
   /** Multipart file upload — do NOT pass Content-Type; fetch sets it with boundary. */

@@ -221,10 +221,29 @@ export async function getSopById(sopId: string): Promise<SOP | null> {
   }
 }
 
+/** Whether the current user may open this SOP (file/study/chat). */
+export async function getSopAccessError(
+  sopId: string,
+): Promise<{ code: string; message: string } | null> {
+  try {
+    await api.get(`/api/sops/${sopId}/file`)
+    return null
+  } catch (e) {
+    if (e instanceof ApiError) {
+      return { code: e.errorCode, message: e.message }
+    }
+    return { code: 'UNKNOWN', message: 'This SOP is not available.' }
+  }
+}
+
 /** Refresh just the signed PDF URL (called from client to extend the iframe before TTL). */
 export async function refreshSopSignedUrl(
   sopId: string,
-): Promise<{ sopDisplayUrl: string | null; expiresInSeconds: number | null }> {
+): Promise<{
+  sopDisplayUrl: string | null
+  expiresInSeconds: number | null
+  accessError: { code: string; message: string } | null
+}> {
   try {
     const raw = await api.get<{
       sopDisplayUrl?: string | null
@@ -235,10 +254,22 @@ export async function refreshSopSignedUrl(
     return {
       sopDisplayUrl: raw.sopDisplayUrl ?? raw.signedUrl ?? null,
       expiresInSeconds: raw.sopSignedUrlExpiresInSeconds ?? raw.expiresInSeconds ?? null,
+      accessError: null,
     }
   } catch (e) {
     console.error('[employee.refreshSopSignedUrl]', e)
-    return { sopDisplayUrl: null, expiresInSeconds: null }
+    if (e instanceof ApiError) {
+      return {
+        sopDisplayUrl: null,
+        expiresInSeconds: null,
+        accessError: { code: e.errorCode, message: e.message },
+      }
+    }
+    return {
+      sopDisplayUrl: null,
+      expiresInSeconds: null,
+      accessError: { code: 'UNKNOWN', message: 'Could not load SOP file.' },
+    }
   }
 }
 

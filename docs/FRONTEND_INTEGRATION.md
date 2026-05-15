@@ -1,6 +1,8 @@
 # Frontend integration — Klonixpharback API
 
-This document is the **single integration guide** for web clients talking to this backend. The product UI is built from a **shadcn/ui dashboard template** (React, Radix primitives, Tailwind): keep shell patterns—sidebar, header, cards, tables—and wire them to this API. Pair with **`docs/API_ENDPOINTS.md`** (complete route table), **`docs/E2E_FULL_FLOW.postman_collection.json`**, and **`docs/E2E_POSTMAN_README.md`**. For an AI-ready build prompt, see **`docs/FRONTEND_AI_PROMPT.md`**.
+This document is the **integration reference** for web clients (auth, errors, HTTP, detailed payloads). For **screen-by-screen implementation** (routes, nav, Phase 3 modules, build order), use **`docs/FRONTEND_IMPLEMENTATION_GUIDE.md`**.
+
+The product UI is built from a **shadcn/ui dashboard template** (React, Radix primitives, Tailwind): keep shell patterns—sidebar, header, cards, tables—and wire them to this API. Pair with **`docs/API_ENDPOINTS.md`** (complete route table), **`postman/E2E_FULL_FLOW.postman_collection.json`**, and **`postman/E2E_POSTMAN_README.md`**. For an AI-ready build prompt, see **`docs/FRONTEND_AI_PROMPT.md`**.
 
 ---
 
@@ -184,6 +186,22 @@ Each user: same optional **`email`**, **`employeeId`**, **`departmentId`** rules
 - **Employees:** only **ACTIVE** SOPs in **`GET /api/sops`**; **403** `SOP_NOT_ACCESSIBLE` on file, study, chat, **`GET /api/quizzes/sop/:sopId`** for other statuses.
 - **`POST /api/assignments`:** **409** `ASSIGNMENT_ALREADY_EXISTS` if duplicate user+quiz. **`bulk-department`:** response **`created`**, **`skipped`**, **`departmentUserCount`**.
 
+**Phase 3 (backend) — course catalog**
+
+- **`POST /api/courses`** — catalog entry linked to an **`sopId`** (`name`, optional `description`, `reason` ≥5). List/get: **`GET /api/courses`**, **`GET /api/courses/:id`**. **Employees** see only **ACTIVE** courses.
+- **`POST /api/course-groups`** — named bundle of courses. Add members: **`POST /api/course-groups/:id/courses`** (`courseId`, `reason`). Assign whole group to a department: **`POST /api/course-groups/:id/assign-department`** (`departmentId`, optional `deadline`, `reason`) — uses the **first quiz per SOP** in the group, **ACTIVE** SOPs only, skips duplicate user+quiz. Response includes **`created`**, **`skippedSops`**, **`quizzesAssigned`**.
+
+**Phase 3 (backend) — induction programs**
+
+- Admin: **`POST /api/induction-programs`**, add steps **`POST …/steps`** (`COURSE` with `courseId` or `ACKNOWLEDGMENT` with `ackText`), enroll **`POST …/enroll-user`** or **`POST …/enroll-department`**.
+- Learner: **`GET /api/induction-programs/my`** (poll after quiz pass — **COURSE** steps auto-complete). Acknowledge: **`POST /api/induction-enrollments/:enrollmentId/steps/:stepId/acknowledge`** (`reason` ≥10, `password`).
+
+**Phase 3 (backend) — planner, JD, qualifications**
+
+- **Planner:** **`POST /api/training-plans`** → add **`POST …/items`** → monthly/annual **`POST …/reviews`** (`reviewType`, `periodKey`, `commentary`).
+- **JD matrix:** **`POST /api/job-descriptions`** → **`POST …/courses`** → **`POST …/assign-user`**.
+- **Qualifications:** **`POST /api/qualifications`** → approvers **`POST …/steps/:stepId/decide`** (`APPROVE`/`REJECT`, password). **HOD** then **Head QA** order enforced.
+
 Study and chat routes are under **`/api/sops`** (tenant JWT; SOP must belong to the user’s company).
 
 | Method | Path | Purpose |
@@ -191,7 +209,7 @@ Study and chat routes are under **`/api/sops`** (tenant JWT; SOP must belong to 
 | **GET** | **`/api/sops/:sopId/study`** | Returns **summary + flashcards** JSON. Uses cached **`studyMaterials`** on the SOP when present; otherwise downloads the PDF, runs AI, saves to DB, then returns. |
 | **POST** | **`/api/sops/:sopId/chat`** | Body **`{ "question": "..." }`** (min 3 chars). Returns **`{ "answer": "..." }`** using the SOP PDF context. |
 
-Implementation lives in **`src/routes/sop.routes.ts`** (handlers for **`/:id/study`** and **`/:id/chat`**). Postman **5.5** / **5.6** in **`docs/E2E_FULL_FLOW.postman_collection.json`** exercise these routes.
+Implementation lives in **`src/routes/sop.routes.ts`** (handlers for **`/:id/study`** and **`/:id/chat`**). Postman **5.5** / **5.6** in **`postman/E2E_FULL_FLOW.postman_collection.json`** exercise these routes.
 
 ---
 
@@ -205,7 +223,7 @@ Use these for **tenant** dashboards: training compliance tables, per-employee hi
 
 **Not available on platform JWT:** **`PLATFORM_ADMIN`** tokens have **no** `companyId`. Tenant **`/api/assignments/company*`** returns **`403`** with **`errorCode`: `TENANT_REQUIRED`**. For SaaS-wide assignment rows, use **`GET /api/platform/assignments`** (Phase 3); **`GET /api/audit/platform`** remains the platform-wide audit feed.
 
-**Reference:** full parameter list in **`docs/API_ENDPOINTS.md`** (Assignments). Postman: **6.0a–6.0c** in **`docs/E2E_FULL_FLOW.postman_collection.json`**.
+**Reference:** full parameter list in **`docs/API_ENDPOINTS.md`** (Assignments). Postman: **6.0a–6.0c** in **`postman/E2E_FULL_FLOW.postman_collection.json`**.
 
 ### 6a.1 `GET /api/assignments/company/stats`
 
@@ -351,10 +369,10 @@ Each element in **`data`** matches the **employee list shape** conceptually: ass
 
 ## 9. Postman collection
 
-- Import **`docs/E2E_FULL_FLOW.postman_collection.json`**.
+- Import **`postman/E2E_FULL_FLOW.postman_collection.json`**.
 - Set **`baseUrl`** to your API.
 - Run folders **in order** for a full smoke (platform → onboard → admin → SOP **upload then publish (5.2b)** → assignment → employee password change → submit).
-- See **`docs/E2E_POSTMAN_README.md`** for variable behavior and troubleshooting.
+- See **`postman/E2E_POSTMAN_README.md`** for variable behavior and troubleshooting.
 
 ---
 
@@ -368,6 +386,7 @@ After backend upgrades, run **`npx prisma migrate deploy`** (prod) or **`npx pri
 
 | File | Content |
 |------|---------|
+| [`FRONTEND_IMPLEMENTATION_GUIDE.md`](./FRONTEND_IMPLEMENTATION_GUIDE.md) | **Start here for UI work:** nav map, screens, Phase 3 flows, error table, sprint order |
 | [`INTEGRITY_VERIFY_SIMULATION.md`](./INTEGRITY_VERIFY_SIMULATION.md) | Dev/QA: simulate failed **e-signature** and **audit** verify |
 | [`MVP_PRODUCT_SCOPE.md`](./MVP_PRODUCT_SCOPE.md) | Phased MVP; Phase 2 status |
 | [`COMPLIANCE_EVIDENCE_PACK_OUTLINE.md`](./COMPLIANCE_EVIDENCE_PACK_OUTLINE.md) | RTM-lite / evidence starter |

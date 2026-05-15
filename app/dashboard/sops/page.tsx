@@ -37,6 +37,7 @@ import { SopViewButton } from '@/components/admin/sop-view-button'
 import { SopStatusDialog } from '@/components/admin/sop-status-dialog'
 import { SopReviseDialog } from '@/components/admin/sop-revise-dialog'
 import { ManualQuizDialog } from '@/components/admin/manual-quiz-dialog'
+import { canUserActivateSop } from '@/lib/sop-errors'
 
 export const metadata = { title: 'SOPs' }
 export const dynamic = 'force-dynamic'
@@ -95,6 +96,7 @@ export default async function SOPsPage({
     session?.role === 'ADMIN' ||
     session?.role === 'SUPER_ADMIN' ||
     session?.role === 'TRAINER'
+  const canActivate = canUserActivateSop(session?.role)
   const hasFilters = !!params.search || !!status || !!params.category
 
   return (
@@ -187,6 +189,7 @@ export default async function SOPsPage({
                           sopId={sop.id}
                           sopTitle={sop.title}
                           currentStatus={sop.status}
+                          canActivate={canActivate}
                           trigger={
                             <Button
                               type="button"

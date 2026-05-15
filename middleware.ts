@@ -85,6 +85,19 @@ export function middleware(request: NextRequest) {
   // ── 5. Role-based routing ──────────────────────────────────────────────
   const { role } = session
 
+  // PLATFORM_ADMIN → only /platform/* (and auth pages handled above)
+  if (role === 'PLATFORM_ADMIN') {
+    if (!pathname.startsWith('/platform')) {
+      return NextResponse.redirect(new URL('/platform/assignments', request.url))
+    }
+    return NextResponse.next()
+  }
+
+  // Tenant users must not access platform console
+  if (pathname.startsWith('/platform')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   // EMPLOYEE → only /my-trainings/* routes
   if (
     role === 'EMPLOYEE' &&
@@ -101,6 +114,8 @@ export function middleware(request: NextRequest) {
 function resolveHome(session: SessionUser): string {
   if (session.mustChangePassword) return '/change-password'
   switch (session.role) {
+    case 'PLATFORM_ADMIN':
+      return '/platform/assignments'
     case 'EMPLOYEE':
       return '/my-trainings'
     default:

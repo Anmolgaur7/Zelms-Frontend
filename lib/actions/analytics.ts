@@ -18,6 +18,7 @@
 
 import { cookies } from 'next/headers'
 import { api, ApiError, BASE_URL } from '@/lib/api'
+import { QUIET_TENANT_READ } from '@/lib/api-quiet'
 import type {
   AdminStats,
   ComplianceReport,
@@ -60,7 +61,18 @@ export interface AdminStatsResult {
 export async function getAdminStats(): Promise<AdminStatsResult> {
   const path = '/api/admin/stats'
   try {
-    const data = await api.get<AdminStats>(path)
+    const data = await api.get<AdminStats>(path, QUIET_TENANT_READ)
+    if (data == null) {
+      return {
+        stats: null,
+        error: {
+          path,
+          message: 'Admin stats unavailable for this session.',
+          code: 'FORBIDDEN',
+          status: 403,
+        },
+      }
+    }
     return { stats: data, error: null }
   } catch (e) {
     console.error('[analytics.getAdminStats]', e)
@@ -78,7 +90,18 @@ export interface ComplianceResult {
 export async function getComplianceReport(): Promise<ComplianceResult> {
   const path = '/api/analytics/compliance'
   try {
-    const data = await api.get<ComplianceReport>(path)
+    const data = await api.get<ComplianceReport>(path, QUIET_TENANT_READ)
+    if (data == null) {
+      return {
+        report: null,
+        error: {
+          path,
+          message: 'Compliance report unavailable for this session.',
+          code: 'FORBIDDEN',
+          status: 403,
+        },
+      }
+    }
     return { report: data, error: null }
   } catch (e) {
     console.error('[analytics.getComplianceReport]', e)
@@ -96,7 +119,18 @@ export interface RiskResult {
 export async function getRiskReport(): Promise<RiskResult> {
   const path = '/api/analytics/risk-report'
   try {
-    const data = await api.get<RiskReport>(path)
+    const data = await api.get<RiskReport>(path, QUIET_TENANT_READ)
+    if (data == null) {
+      return {
+        report: null,
+        error: {
+          path,
+          message: 'Risk report unavailable for this session.',
+          code: 'FORBIDDEN',
+          status: 403,
+        },
+      }
+    }
     return { report: data, error: null }
   } catch (e) {
     console.error('[analytics.getRiskReport]', e)
@@ -114,7 +148,18 @@ export interface SopDifficultyResult {
 export async function getSopDifficulty(): Promise<SopDifficultyResult> {
   const path = '/api/analytics/sop-difficulty'
   try {
-    const data = await api.get<SopDifficultyReport>(path)
+    const data = await api.get<SopDifficultyReport>(path, QUIET_TENANT_READ)
+    if (data == null) {
+      return {
+        report: null,
+        error: {
+          path,
+          message: 'SOP difficulty report unavailable for this session.',
+          code: 'FORBIDDEN',
+          status: 403,
+        },
+      }
+    }
     return { report: data, error: null }
   } catch (e) {
     console.error('[analytics.getSopDifficulty]', e)

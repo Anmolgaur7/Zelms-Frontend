@@ -27,6 +27,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 
 import { createSOP, getQuizzesBySOP } from '@/lib/actions/admin'
+import { formatSopUploadError } from '@/lib/sop-errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -74,6 +75,7 @@ type Phase = 'form' | 'uploading' | 'generating' | 'preview' | 'timeout'
 interface UploadOutcome {
   sopId: string
   title: string
+  status?: string
 }
 
 export function CreateSOPModal({ trigger }: { trigger: React.ReactNode }) {
@@ -135,23 +137,30 @@ export function CreateSOPModal({ trigger }: { trigger: React.ReactNode }) {
       const result = await createSOP(formData)
 
       if (result.error || !result.data) {
-        setServerError(result.error ?? 'Failed to upload SOP.')
-        toast.error(result.error ?? 'Failed to upload SOP.')
+        const msg = formatSopUploadError(
+          result.error ?? 'Failed to upload SOP.',
+          result.errorCode,
+        )
+        setServerError(msg)
+        toast.error(msg)
         setPhase('form')
         return
       }
 
-      const sopId =
-        (result.data as { id?: string }).id ??
-        (result.data as { _id?: string })._id ??
-        null
+      const payload = result.data as { id?: string; _id?: string; status?: string }
+      const sopId = payload.id ?? payload._id ?? null
       if (!sopId) {
-        // SOP saved but no id returned — bail safely.
-        toast.success(`SOP "${values.title}" uploaded.`)
+        toast.success(
+          `SOP "${values.title}" uploaded as DRAFT. An admin must publish it before assignment.`,
+        )
         handleOpenChange(false)
         return
       }
-      setOutcome({ sopId, title: values.title })
+      setOutcome({
+        sopId,
+        title: values.title,
+        status: payload.status ?? 'DRAFT',
+      })
       setPhase('generating')
       setAttempt(0)
     })

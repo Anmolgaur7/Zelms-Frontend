@@ -28,6 +28,8 @@ Auth: **`Authorization: Bearer <token>`** unless noted. Roles are enforced per r
 | POST | `/login` | — | `identifier`, `password` |
 | POST | `/onboard` | `PLATFORM_ADMIN` | New tenant + super-admin invite |
 | GET | `/assignments` | `PLATFORM_ADMIN` | **Phase 3:** Cross-tenant assignment list. Query: `page`, `limit` (max 100), optional `companyId`, `status`, `userId`, `quizId`, `sopId`, `search` (trainee name). Response **`{ page, limit, total, data }`**. Rows include trainee, **company** (name, prefix, licenseId), quiz + SOP metadata; **no** signed PDF URLs. Writes platform audit **`PLATFORM_ASSIGNMENTS_QUERY`**. |
+| GET | `/assignments/stats` | `PLATFORM_ADMIN` | **Phase 3:** Cross-tenant assignment KPI stats. Optional query `companyId`. Response mirrors tenant stats (counts by status, completed pass/fail, avg score among passes, overdue pending, locked-out). Writes platform audit **`PLATFORM_ASSIGNMENTS_STATS_QUERY`**. |
+| GET | `/companies/assignment-stats` | `PLATFORM_ADMIN` | **Phase 3:** Per-company assignment KPIs (platform support view). Query: `page`, `limit` (max 100), optional `companyStatus` (`ACTIVE` \| `SUSPENDED` \| `TERMINATED`). Response **`{ page, limit, totalCompanies, data }`**, where each row includes `company` metadata + `stats`. Writes platform audit **`PLATFORM_COMPANY_ASSIGNMENT_STATS_QUERY`**. |
 
 ## Admin org (`/api/admin`)
 
@@ -79,6 +81,77 @@ Auth: **`Authorization: Bearer <token>`** unless noted. Roles are enforced per r
 
 **Platform (`PLATFORM_ADMIN`)** tokens have no `companyId`; tenant **`GET /api/assignments/company*`** routes return **403** `TENANT_REQUIRED`. Cross-tenant reads use **`GET /api/platform/assignments`** (Phase 3).
 
+## Courses (`/api/courses`) — Phase 3 catalog
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Body: `name`, `sopId`, optional `description`, `reason` (≥5). **409** `COURSE_DUPLICATE_NAME`. |
+| GET | `/` | `ADMIN`, `TRAINER`, `AUDITOR`, `EMPLOYEE` | **EMPLOYEE:** only **ACTIVE** courses. Query: `status`, `search`, `sopId`. |
+| GET | `/:id` | `ADMIN`, `TRAINER`, `AUDITOR`, `EMPLOYEE` | **403** `COURSE_NOT_ACCESSIBLE` for employee + non-ACTIVE. |
+| PATCH | `/:id` | `ADMIN`, `TRAINER` | Body: optional `name`, `description`, `status`, `sopId`, `reason` (≥5). |
+
+## Course groups (`/api/course-groups`) — Phase 3 catalog + assign rules
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Body: `name`, optional `description`, `reason` (≥5). **409** `COURSE_GROUP_DUPLICATE_NAME`. |
+| GET | `/` | `ADMIN`, `TRAINER`, `AUDITOR`, `EMPLOYEE` | **EMPLOYEE:** only **ACTIVE** groups. Query: `status`, `search`. |
+| GET | `/:id` | `ADMIN`, `TRAINER`, `AUDITOR`, `EMPLOYEE` | Includes member **courses** + linked SOP metadata. |
+| PATCH | `/:id` | `ADMIN`, `TRAINER` | Body: optional `name`, `description`, `status`, `reason` (≥5). |
+| POST | `/:id/courses` | `ADMIN`, `TRAINER` | Add course: `courseId`, optional `sortOrder`, `reason` (≥5). **409** `COURSE_GROUP_MEMBER_EXISTS`. |
+| DELETE | `/:id/courses/:courseId` | `ADMIN`, `TRAINER` | Body or query `reason` (≥5). |
+| POST | `/:id/assign-department` | `ADMIN`, `TRAINER` | Body: `departmentId`, optional `deadline`, `reason` (≥5). Assigns **first quiz per SOP** for each course in group (ACTIVE SOPs only); dedupes existing user+quiz. Response **`created`**, **`skippedSops`**, **`quizzesAssigned`**. **409** `COURSE_GROUP_EMPTY`. |
+
+## Induction programs (`/api/induction-programs`) — Phase 3
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Body: `name`, optional `description`, `reason` (≥5). |
+| GET | `/` | `ADMIN`, `TRAINER`, `AUDITOR` | List programs. Query: `status`. |
+| GET | `/my` | User | Learner enrollments + step progress (syncs **COURSE** steps from passed assignments). |
+| GET | `/:id` | `ADMIN`, `TRAINER`, `AUDITOR` | Program + ordered steps. |
+| PATCH | `/:id` | `ADMIN`, `TRAINER` | Update name/description/status. |
+| POST | `/:id/steps` | `ADMIN`, `TRAINER` | **COURSE** (`courseId`) or **ACKNOWLEDGMENT** (`ackText` ≥10). |
+| POST | `/:id/enroll-user` | `ADMIN`, `TRAINER` | Body: `userId`, optional `deadline`, `reason`. Creates assignments for **COURSE** steps. |
+| POST | `/:id/enroll-department` | `ADMIN`, `TRAINER` | Bulk enroll department; skips already enrolled/completed. |
+
+## Induction enrollments (`/api/induction-enrollments`)
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/:enrollmentId/steps/:stepId/acknowledge` | User (enrollee) | **ACKNOWLEDGMENT** steps only. Body: `reason` (≥10), `password` (e-sign). |
+
+## Training plans (`/api/training-plans`) — Phase 3 planner
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Body: `calendarYear`, `title`, `reason` (≥5). Status **DRAFT**. |
+| GET | `/` | `ADMIN`, `TRAINER`, `AUDITOR` | Query: `year`, `status`. |
+| GET | `/:id` | `ADMIN`, `TRAINER`, `AUDITOR` | Plan + items + reviews. |
+| PATCH | `/:id` | `ADMIN`, `TRAINER` | `title`, `status` (`DRAFT` \| `ACTIVE` \| `CLOSED`). |
+| POST | `/:id/items` | `ADMIN`, `TRAINER` | Line item: `label`, optional `courseId`, `sopId`, `departmentId`, `plannedMonth` (1–12). |
+| POST | `/:id/reviews` | `ADMIN`, `TRAINER`, `AUDITOR` | Monthly/annual commentary: `reviewType`, `periodKey`, `commentary` (≥10), `reason`. |
+
+## Job descriptions (`/api/job-descriptions`) — Phase 3 JD matrix
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Body: `code`, `title`, optional `description`, `reason`. |
+| GET | `/`, `GET /:id` | `ADMIN`, `TRAINER`, `AUDITOR` | List / matrix detail (courses + assigned users). |
+| PATCH | `/:id` | `ADMIN`, `TRAINER` | Update title/description. |
+| POST | `/:id/courses` | `ADMIN`, `TRAINER` | Link required **course** to JD. |
+| POST | `/:id/assign-user` | `ADMIN`, `TRAINER` | Assign JD to **user**. |
+
+## Qualifications (`/api/qualifications`) — Phase 3 ladders
+
+| Method | Path | Roles | Notes |
+|--------|------|-------|--------|
+| POST | `/` | `ADMIN`, `TRAINER` | Start request: `subjectUserId`, `qualificationType` (`EMPLOYEE` \| `TRAINER`), `reason` (≥10). Creates steps **HOD** → **HEAD_QA**. |
+| GET | `/` | `ADMIN`, `TRAINER`, `AUDITOR` | List; query `status`. |
+| GET | `/my` | User | Requests where you are the **subject**. |
+| GET | `/:id` | `ADMIN`, `TRAINER`, `AUDITOR` | Detail + steps. |
+| POST | `/:id/steps/:stepId/decide` | **HOD:** `ADMIN`, `TRAINER`, `SUPER_ADMIN`; **Head QA:** `ADMIN`, `SUPER_ADMIN` | Body: `decision` (`APPROVE` \| `REJECT`), `reason` (≥10), `password`. Sequential steps enforced. |
+
 ## Analytics (`/api/analytics`)
 
 | Method | Path | Roles | Notes |
@@ -119,8 +192,10 @@ Auth: **`Authorization: Bearer <token>`** unless noted. Roles are enforced per r
 
 ---
 
-The Postman collection **`docs/E2E_FULL_FLOW.postman_collection.json`** covers a **happy path**, not every row above. Use this document when wiring the full UI or extra tooling.
+The Postman collection **`postman/E2E_FULL_FLOW.postman_collection.json`** covers a **happy path**, not every row above. Use this document when wiring the full UI or extra tooling.
 
+**Frontend implementation (screens, nav, flows):** **`docs/FRONTEND_IMPLEMENTATION_GUIDE.md`**.  
+**Frontend integration (auth, errors, payloads):** **`docs/FRONTEND_INTEGRATION.md`**.  
 **Dev / QA — simulating failed verify calls (e-signature + audit):** **`docs/INTEGRITY_VERIFY_SIMULATION.md`**.  
 **MVP vs full-scale product messaging:** **`docs/MVP_PRODUCT_SCOPE.md`**.  
 **Phase 2 evidence & deploy:** **`docs/COMPLIANCE_EVIDENCE_PACK_OUTLINE.md`**, **`docs/SECURITY_DEPLOYMENT_CHECKLIST.md`**.

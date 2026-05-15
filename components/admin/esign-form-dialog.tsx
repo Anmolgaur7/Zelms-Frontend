@@ -139,12 +139,15 @@ export function EsignFormDialog<
       if (result.error) {
         const friendlyByCode: Record<string, string> = {
           INVALID_PASSWORD: 'Incorrect password. Please try again.',
+          INVALID_SIGNATURE: 'Incorrect password. Please try again.',
           USER_ROLE_PROTECTED:
             'Only the company Super Admin can change this account. Ask a Super Admin to make this change.',
           ASSIGNMENT_NOT_LOCKED:
             'This assignment is not in a LOCKED_OUT state, so it cannot be unlocked.',
           SOP_INVALID_STATUS_TRANSITION:
             'The chosen status is not a valid next state for this SOP.',
+          SOP_ACTIVATION_FORBIDDEN:
+            'Only an administrator can publish (activate) an SOP.',
         }
         setServerError(friendlyByCode[result.errorCode ?? ''] ?? result.error)
         setSupportRequestId(result.requestId ?? null)

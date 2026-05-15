@@ -137,14 +137,22 @@ export function BulkAssignDialog({ trigger }: { trigger: React.ReactNode }) {
       const count = bulkAssignedCount(data)
       const skipped =
         typeof data?.skipped === 'number' ? data.skipped : undefined
+      const deptTotal =
+        typeof data?.departmentUserCount === 'number'
+          ? data.departmentUserCount
+          : undefined
       const target = selectedDept?.name ?? 'the department'
       const skipPhrase =
         typeof skipped === 'number' && skipped > 0
-          ? ` ${skipped} skipped (already assigned this quiz).`
+          ? ` ${skipped} skipped (already assigned).`
+          : ''
+      const deptPhrase =
+        typeof deptTotal === 'number'
+          ? ` (${count} of ${deptTotal} in department)`
           : ''
       toast.success(
         count > 0
-          ? `Created ${count} assignment${count === 1 ? '' : 's'} in ${target}.${skipPhrase}`
+          ? `Created ${count} assignment${count === 1 ? '' : 's'} in ${target}${deptPhrase}.${skipPhrase}`
           : skipped != null && skipped > 0
             ? `No new rows in ${target} — all targeted users already had this quiz.`
             : `Bulk assignment created for ${target}.`,

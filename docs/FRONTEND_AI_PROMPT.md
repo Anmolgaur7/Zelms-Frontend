@@ -13,7 +13,9 @@ UI STACK (NON-NEGOTIABLE):
 - Tenant login UI = **company code + employee ID + password** (not email-first). Platform admin login = **email + password** on a separate path or tab.
 
 AUTHORITATIVE BACKEND DOCS (read these in the repo before inventing endpoints):
-- docs/FRONTEND_INTEGRATION.md — full integration guide, auth flows, error envelope, user create rules
+- docs/FRONTEND_IMPLEMENTATION_GUIDE.md — screen map, nav, Phase 0–3 UI flows, shared patterns (e-sign, tables), sprint order
+- docs/FRONTEND_INTEGRATION.md — auth, errors, HTTP conventions, §6a report shapes
+- docs/API_ENDPOINTS.md — complete route table
 - postman/E2E_FULL_FLOW.postman_collection.json — request order, bodies, and realistic flows (includes **5.5 study** / **5.6 SOP chat**)
 - postman/E2E_POSTMAN_README.md — collection variables and troubleshooting
 
@@ -45,4 +47,4 @@ Do not assume email-password login for tenant employees. Do not require email on
 
 ---
 
-After pasting, point the AI at **`docs/FRONTEND_INTEGRATION.md`** and ask it to implement screens inside your **shadcn dashboard template** (sidebar layout, cards, tables, forms) using **Next.js** or **Vite + React** as in your repo.
+After pasting, point the AI at **`docs/FRONTEND_IMPLEMENTATION_GUIDE.md`** (what to build) and **`docs/FRONTEND_INTEGRATION.md`** (how auth/errors work). Implement screens inside your **shadcn dashboard template** using **Next.js** or **Vite + React** as in your repo.
